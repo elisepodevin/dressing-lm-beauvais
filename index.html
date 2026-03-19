@@ -577,11 +577,20 @@ function syncFromFirebase() {
 }
 
 // ─── Sauvegarder un produit dans Firebase (avec ses photos)
+function cleanObj(obj) {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(cleanObj);
+  const r = {};
+  for (const [k, v] of Object.entries(obj)) { if (v !== undefined) r[k] = cleanObj(v); }
+  return r;
+}
+
 function saveProdToFirebase(prod) {
   if (!FB_READY) return;
-  DB_LIVE.ref('products/' + prod.id).set(prod)
-    .then(() => console.log('✅ Produit sauvegardé dans Firebase'))
-    .catch(e => console.error('Erreur Firebase produit:', e));
+  DB_LIVE.ref('products/' + prod.id).set(cleanObj(prod))
+    .then(() => console.log('✅ Produit sauvegardé'))
+    .catch(e => { console.error('Erreur Firebase produit:', e); toast('❌ Erreur sauvegarde: ' + e.message, 'e'); });
 }
 
 // ─── Sauvegarder une commande dans Firebase
@@ -1336,23 +1345,45 @@ function saveAllToFirebase() {
   const saveBtn = document.getElementById('global-save-btn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '⏳ Sauvegarde...'; }
 
-  // Sauvegarder tous les produits
-  LOCAL.products.forEach(p => saveProdToFirebase(p));
-  // Sauvegarder tous les utilisateurs
-  LOCAL.users.forEach(u => saveUserToFirebase(u));
-  // Sauvegarder toutes les commandes
-  LOCAL.orders.forEach(o => saveOrderToFirebase(o));
-  // Sauvegarder les commandes fournisseurs
-  LOCAL.supplier_orders.forEach(s => { if(FB_READY) DB_LIVE.ref('supplier_orders/'+s.id).set(s); });
-  // Sauvegarder les settings
-  if(FB_READY) DB_LIVE.ref('settings').set(LOCAL.settings);
-  // Sauvegarder les admins
-  LOCAL.admins.forEach(a => { if(FB_READY) DB_LIVE.ref('admins/'+a.id).set(a); });
+  // Nettoyer les undefined (Firebase les refuse)
+  function clean(obj) {
+    if (obj === null || obj === undefined) return null;
+    if (typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(clean);
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) result[k] = clean(v);
+    }
+    return result;
+  }
 
-  setTimeout(() => {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Enregistrer tout'; }
-    toast('💾 Tout a été sauvegardé dans Firebase !');
-  }, 1000);
+  // Construire UN SEUL objet avec TOUT et faire UN SEUL appel Firebase
+  const allData = {};
+
+  // Produits
+  LOCAL.products.forEach(p => { allData['products/' + p.id] = clean(p); });
+  // Users
+  LOCAL.users.forEach(u => { allData['users/' + u.id] = clean(u); });
+  // Commandes
+  LOCAL.orders.forEach(o => { allData['orders/' + o.id] = clean(o); });
+  // Fournisseurs
+  LOCAL.supplier_orders.forEach(s => { allData['supplier_orders/' + s.id] = clean(s); });
+  // Settings
+  allData['settings'] = clean(LOCAL.settings);
+  // Admins
+  LOCAL.admins.forEach(a => { allData['admins/' + a.id] = clean(a); });
+
+  // UN SEUL appel Firebase → ultra rapide
+  DB_LIVE.ref().update(allData)
+    .then(() => {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Enregistrer tout'; }
+      toast('💾 Tout sauvegardé en une seule opération !');
+    })
+    .catch(e => {
+      console.error('Erreur sauvegarde globale:', e);
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Enregistrer tout'; }
+      toast('❌ Erreur : ' + e.message, 'e');
+    });
 }
 
 // ── Panneau de notifications
