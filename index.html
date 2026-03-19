@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dressing Pro — Leroy Merlin Beauvais</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- ══ FIREBASE ══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update, push, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── CONFIG FIREBASE ──
+// INSTRUCTIONS : Remplacez ces valeurs par celles de votre projet Firebase
+// 1) Allez sur https://console.firebase.google.com
+// 2) Créez un projet "dressing-lm-beauvais"
+// 3) Ajoutez une app Web, copiez la config ici
+// 4) Activez "Realtime Database" en mode test
+const firebaseConfig = {
+  apiKey: "VOTRE_API_KEY",
+  authDomain: "VOTRE_PROJECT.firebaseapp.com",
+  databaseURL: "https://VOTRE_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "VOTRE_PROJECT",
+  storageBucket: "VOTRE_PROJECT.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId: "VOTRE_APP_ID"
+};
+
+let DB_LIVE = null;
+let FB_READY = false;
+
+try {
+  const app = initializeApp(firebaseConfig);
+  DB_LIVE = getDatabase(app);
+  FB_READY = true;
+  window._fb = { DB_LIVE, ref, set, get, onValue, update, push, remove };
+  window._fbReady = true;
+  console.log("Firebase connecté ✅");
+} catch(e) {
+  console.warn("Firebase non configuré, mode local activé", e);
+  window._fbReady = false;
+}
+
+window._fbLoaded = true;
+document.dispatchEvent(new Event('fbloaded'));
+</script>
+
+<style>
+:root{
+  --g:#67B346;--gd:#3d7a1e;--gl:#edf7e6;--gm:#b8dfa0;
+  --o:#f97316;--ol:#fff4ed;--r:#e53935;--rl:#fde8e8;
+  --y:#f59e0b;--yl:#fffbeb;
+  --n50:#f8fafc;--n100:#f1f5f9;--n200:#e2e8f0;--n300:#cbd5e1;
+  --n400:#94a3b8;--n500:#64748b;--n600:#475569;--n700:#334155;
+  --n800:#1e293b;--n900:#0f172a;
+  --sh1:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --sh2:0 4px 16px rgba(0,0,0,.08);
+  --sh3:0 12px 40px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06);
+  --r8:8px;--r12:12px;--r16:16px;--r20:20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--n50);color:var(--n800);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#0c1f06 0%,#172e0a 40%,#2a5515 100%);position:relative;overflow:hidden}
+.login-grid{position:absolute;inset:0;opacity:.05;background-image:linear-gradient(rgba(255,255,255,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.3) 1px,transparent 1px);background-size:40px 40px}
+.login-wrap{position:relative;z-index:1;width:100%;padding:20px;display:flex;justify-content:center;align-items:center}
+.login-card{background:white;border-radius:var(--r20);padding:42px 40px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.login-brand{display:flex;align-items:center;gap:13px;margin-bottom:28px}
+.login-brand-icon{width:50px;height:50px;background:var(--g);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(103,179,70,.4)}
+.login-brand-text h1{font-size:17px;font-weight:800;color:var(--n900);letter-spacing:-.3px}
+.login-brand-text p{font-size:11px;color:var(--n400);margin-top:2px}
+.login-badge{display:inline-flex;align-items:center;gap:6px;background:var(--gl);border:1px solid var(--gm);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--gd);margin-bottom:22px}
+.login-h{font-size:21px;font-weight:800;color:var(--n900);letter-spacing:-.3px;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--n400);margin-bottom:22px;line-height:1.4}
+.form-group{margin-bottom:13px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--n600);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.form-input{width:100%;padding:11px 13px;border:1.5px solid var(--n200);border-radius:var(--r8);font-family:inherit;font-size:14px;color:var(--n800);transition:all .2s;background:white}
+.form-input:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px rgba(103,179,70,.12)}
+.login-error-box{padding:10px 13px;background:var(--rl);border:1px solid #fca5a5;border-radius:var(--r8);font-size:13px;color:var(--r);margin-bottom:13px;display:none}
+.login-info-box{padding:10px 13px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r8);font-size:13px;color:#1d4ed8;margin-bottom:13px;line-height:1.4}
+.login-success-box{padding:10px 13px;background:var(--gl);border:1px solid var(--gm);border-radius:var(--r8);font-size:13px;color:var(--gd);margin-bottom:13px;line-height:1.4}
+.fb-status{margin-top:18px;padding:10px 13px;border-radius:var(--r8);font-size:11px;font-weight:600;text-align:center}
+.fb-status.ok{background:var(--gl);color:var(--gd);border:1px solid var(--gm)}
+.fb-status.local{background:var(--yl);color:#92400e;border:1px solid #fde68a}
+.fb-status.setup{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 17px;border-radius:var(--r8);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--g);color:white}.btn-primary:hover{background:var(--gd);transform:translateY(-1px);box-shadow:0 4px 14px rgba(103,179,70,.35)}
+.btn-full{width:100%;padding:13px;font-size:15px}
+.btn-secondary{background:var(--n100);color:var(--n700)}.btn-secondary:hover{background:var(--n200)}
+.btn-danger{background:var(--r);color:white}.btn-danger:hover{background:#c62828}
+.btn-outline{background:transparent;border:1.5px solid var(--g);color:var(--g)}.btn-outline:hover{background:var(--gl)}
+.btn-ghost{background:transparent;color:var(--n500);border:1.5px solid var(--n200)}.btn-ghost:hover{background:var(--n100)}
+.btn-sm{padding:6px 12px;font-size:12px}.btn-xs{padding:4px 9px;font-size:11px}
+
+/* APP LAYOUT */
+#app{display:none;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--n900);z-index:200;display:flex;flex-direction:column;transition:transform .3s}
+.sb-logo{padding:17px 17px 13px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px}
+.sb-logo-icon{width:36px;height:36px;background:var(--g);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-logo-text strong{font-size:13px;font-weight:800;color:white;display:block;letter-spacing:-.2px}
+.sb-logo-text small{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:.5px;text-transform:uppercase}
+.sb-user{padding:11px 13px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px}
+.sb-av{width:34px;height:34px;background:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;flex-shrink:0}
+.sb-uname{font-size:12px;font-weight:700;color:white;display:block;line-height:1.3}
+.sb-urole{font-size:10px;color:rgba(255,255,255,.35)}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-weight:600;color:rgba(255,255,255,.45);cursor:pointer;border-radius:7px;margin:1px 7px;transition:all .15s;border:none;background:transparent;font-family:inherit;text-align:left;width:calc(100% - 14px)}
+.nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
+.nav-item.active{background:rgba(103,179,70,.2);color:var(--g)}
+.nav-icon{width:15px;text-align:center;font-size:14px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--o);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px}
+.sb-foot{padding:10px;border-top:1px solid rgba(255,255,255,.05)}
+.sb-logout{display:flex;align-items:center;gap:8px;padding:8px 12px;width:100%;font-size:13px;font-weight:600;color:rgba(255,255,255,.3);cursor:pointer;border-radius:6px;border:none;background:transparent;font-family:inherit;transition:all .2s}
+.sb-logout:hover{background:rgba(229,57,53,.15);color:#ef5350}
+.main-wrap{margin-left:250px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:white;border-bottom:1px solid var(--n200);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-title{font-size:15px;font-weight:800;color:var(--n900);letter-spacing:-.3px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.content{padding:24px;flex:1}
+
+/* CARDS */
+.card{background:white;border-radius:var(--r12);box-shadow:var(--sh1);border:1px solid var(--n100)}
+.card-head{padding:15px 18px 12px;border-bottom:1px solid var(--n100);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:800;color:var(--n900)}
+.card-body{padding:18px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:white;border-radius:var(--r12);padding:15px 17px;border:1px solid var(--n100);box-shadow:var(--sh1);border-left:3px solid var(--n200)}
+.stat.g{border-left-color:var(--g)}.stat.o{border-left-color:var(--o)}.stat.r{border-left-color:var(--r)}.stat.b{border-left-color:#3b82f6}.stat.y{border-left-color:var(--y)}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n400);margin-bottom:4px}
+.stat-val{font-size:25px;font-weight:800;color:var(--n900);line-height:1;margin-bottom:3px;letter-spacing:-.5px}
+.stat-sub{font-size:11px;color:var(--n500)}
+.prog{background:var(--n200);border-radius:4px;height:5px;margin-top:7px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:var(--g);transition:width .5s}
+.prog-fill.o{background:var(--o)}.prog-fill.r{background:var(--r)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.bg{background:var(--gl);color:var(--gd)}.bo{background:var(--ol);color:#c2410c}.br{background:var(--rl);color:var(--r)}.bn{background:var(--n100);color:var(--n600)}.bb{background:#eff6ff;color:#2563eb}.by{background:var(--yl);color:#b45309}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n500);background:var(--n50);border-bottom:1px solid var(--n200)}
+tbody td{padding:10px 12px;font-size:13px;color:var(--n700);border-bottom:1px solid var(--n100);vertical-align:middle}
+tbody tr:hover{background:var(--n50)}
+tbody tr:last-child td{border-bottom:none}
+
+/* CATALOG */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filter-btn{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--n200);background:white;color:var(--n500);font-family:inherit;transition:all .15s}
+.filter-btn:hover{border-color:var(--g);color:var(--g)}
+.filter-btn.active{background:var(--g);border-color:var(--g);color:white}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.prod-card{background:white;border-radius:var(--r12);border:1.5px solid var(--n200);overflow:hidden;cursor:pointer;transition:all .2s}
+.prod-card:hover{border-color:var(--g);box-shadow:0 6px 22px rgba(103,179,70,.14);transform:translateY(-2px)}
+.prod-card.unavail{opacity:.6}
+.prod-img{height:148px;background:linear-gradient(135deg,var(--gl),var(--gm));display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.prod-img img{width:100%;height:100%;object-fit:cover}
+.prod-emoji{font-size:54px;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.prod-badge-pos{position:absolute;top:7px;right:7px}
+.prod-info{padding:11px 13px}
+.prod-name{font-size:13px;font-weight:800;color:var(--n900);margin-bottom:3px;line-height:1.3;letter-spacing:-.1px}
+.prod-cat{font-size:11px;color:var(--n400);margin-bottom:6px}
+.prod-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.prod-credits{font-size:12px;font-weight:800;color:var(--gd)}
+
+/* IMAGE UPLOAD */
+.img-upload-zone{border:2px dashed var(--n300);border-radius:var(--r12);padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--n50)}
+.img-upload-zone:hover{border-color:var(--g);background:var(--gl)}
+.img-upload-zone input[type=file]{display:none}
+.img-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.img-item{position:relative;aspect-ratio:1;border-radius:var(--r8);overflow:hidden;border:2px solid var(--n200)}
+.img-item:first-child{border-color:var(--g)}
+.img-item img{width:100%;height:100%;object-fit:cover}
+.img-del{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(0,0,0,.65);color:white;border:none;border-radius:50%;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center}
+.img-del:hover{background:var(--r)}
+.img-primary-tag{position:absolute;bottom:3px;left:3px;background:var(--g);color:white;font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;backdrop-filter:blur(2px)}
+.modal-overlay.active{display:flex}
+.modal{background:white;border-radius:var(--r16);width:100%;max-width:540px;box-shadow:var(--sh3);margin:auto;max-height:92vh;overflow-y:auto;animation:mIn .2s ease}
+.modal-xl{max-width:660px}
+@keyframes mIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal-head{padding:17px 20px 13px;border-bottom:1px solid var(--n100);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1;border-radius:var(--r16) var(--r16) 0 0}
+.modal-title{font-size:15px;font-weight:800;color:var(--n900);letter-spacing:-.2px}
+.modal-x{width:27px;height:27px;border-radius:50%;border:none;background:var(--n100);cursor:pointer;font-size:14px;color:var(--n500);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-x:hover{background:var(--n200)}
+.modal-body{padding:20px}
+.modal-foot{padding:13px 20px;border-top:1px solid var(--n100);display:flex;justify-content:flex-end;gap:9px}
+
+/* SIZES */
+.size-grid{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}
+.size-btn{padding:7px 12px;border-radius:7px;border:1.5px solid var(--n200);background:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--n700);transition:all .15s;min-width:46px;text-align:center;line-height:1.2}
+.size-btn:hover:not(:disabled){border-color:var(--g);color:var(--g)}
+.size-btn.sel{background:var(--g);border-color:var(--g);color:white}
+.size-btn:disabled{opacity:.3;cursor:not-allowed;text-decoration:line-through}
+
+/* ALERTS */
+.alert{padding:10px 13px;border-radius:var(--r8);font-size:13px;margin-bottom:12px;display:flex;align-items:flex-start;gap:9px;line-height:1.4}
+.alert-w{background:var(--yl);border:1px solid #fde68a;color:#92400e}
+.alert-e{background:var(--rl);border:1px solid #fca5a5;color:var(--r)}
+.alert-s{background:var(--gl);border:1px solid var(--gm);color:var(--gd)}
+.alert-i{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8}
+
+/* TOASTS */
+.toast-wrap{position:fixed;top:16px;right:16px;z-index:1000;display:flex;flex-direction:column;gap:7px}
+.toast{background:white;border-radius:var(--r8);padding:11px 15px;box-shadow:var(--sh3);font-size:13px;font-weight:600;max-width:320px;display:flex;align-items:center;gap:9px;border-left:3px solid var(--g);animation:tIn .3s ease}
+.toast.e{border-left-color:var(--r)}.toast.w{border-left-color:var(--o)}
+@keyframes tIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tOut{to{transform:translateX(120%);opacity:0}}
+
+/* MISC */
+.search-input{padding:8px 13px 8px 33px;border:1.5px solid var(--n200);border-radius:var(--r8);font-family:inherit;font-size:13px;background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.44 1.311a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E") no-repeat 10px center;min-width:200px}
+.search-input:focus{outline:none;border-color:var(--g)}
+.sel-input{padding:8px 28px 8px 11px;border:1.5px solid var(--n200);border-radius:var(--r8);font-family:inherit;font-size:13px;background:white;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:calc(100% - 9px) center}
+.sel-input:focus{outline:none;border-color:var(--g)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-textarea{width:100%;padding:9px 13px;border:1.5px solid var(--n200);border-radius:var(--r8);font-family:inherit;font-size:13px;resize:vertical;min-height:74px}
+.form-textarea:focus{outline:none;border-color:var(--g)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.tag-c{background:#dbeafe;color:#1d4ed8}.tag-s{background:#f3e8ff;color:#7c3aed}.tag-o{background:#fef3c7;color:#92400e}
+.cart-count{position:absolute;top:-6px;right:-6px;background:var(--r);color:white;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.empty{text-align:center;padding:44px 20px;color:var(--n400)}
+.empty-icon{font-size:42px;margin-bottom:10px}
+.empty-h{font-size:15px;font-weight:700;color:var(--n600);margin-bottom:4px}
+.rights-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.right-box{background:var(--n50);border-radius:var(--r8);padding:11px;text-align:center;border:1px solid var(--n200)}
+.right-box-val{font-size:20px;font-weight:800;color:var(--n900)}
+.right-box-lbl{font-size:10px;color:var(--n500);margin-top:2px}
+.right-box.ok{border-color:var(--g);background:var(--gl)}.right-box.ok .right-box-val{color:var(--gd)}
+.right-box.no{border-color:var(--r);background:var(--rl)}.right-box.no .right-box-val{color:var(--r)}
+.order-steps{display:flex;align-items:center;gap:0;margin:12px 0}
+.step{flex:1;text-align:center;position:relative;font-size:10px;color:var(--n400);font-weight:600}
+.step::before{content:'';display:block;width:24px;height:24px;border-radius:50%;background:var(--n200);margin:0 auto 5px;position:relative;z-index:1}
+.step::after{content:'';position:absolute;top:12px;left:50%;right:-50%;height:2px;background:var(--n200);z-index:0}
+.step:last-child::after{display:none}
+.step.done::before{background:var(--g);content:'✓';color:white;font-size:11px;line-height:24px;font-weight:800}
+.step.done::after{background:var(--g)}.step.done{color:var(--gd);font-weight:800}
+.step.cur::before{background:var(--o);content:'●';color:white;font-size:8px;line-height:24px}
+.step.cur{color:var(--o);font-weight:800}
+.hamburger{display:none;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:var(--n100);border-radius:7px;cursor:pointer;font-size:17px}
+.stock-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.stock-dot.ok{background:var(--g)}.stock-dot.low{background:var(--o)}.stock-dot.out{background:var(--r)}
+.prod-thumb-sm{width:32px;height:32px;border-radius:6px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.prod-thumb-sm img{width:100%;height:100%;object-fit:cover}
+.sep{height:1px;background:var(--n100);margin:12px 0}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;flex-wrap:wrap}
+
+/* FIREBASE SETUP BANNER */
+.fb-setup-banner{background:#1e293b;color:white;padding:14px 20px;font-size:13px;border-bottom:3px solid var(--g);display:none}
+.fb-setup-banner a{color:var(--g);font-weight:700}
+.fb-setup-banner.show{display:block}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}
+  .main-wrap{margin-left:0}.hamburger{display:flex}
+  .stats-grid{grid-template-columns:1fr 1fr}.products-grid{grid-template-columns:1fr 1fr}
+  .form-row{grid-template-columns:1fr}.content{padding:14px}.topbar{padding:0 14px}
+  .rights-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){.stats-grid{grid-template-columns:1fr}.products-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-grid"></div>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-icon">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+            <path d="M4 7h22v3H4zM4 13h14v3H4zM4 19h16v3H4z" fill="white" opacity=".9"/>
+            <circle cx="24" cy="21" r="4" fill="white" opacity=".5"/>
+          </svg>
+        </div>
+        <div class="login-brand-text">
+          <h1>Dressing Pro</h1>
+          <p>Leroy Merlin Beauvais — Service RH</p>
+        </div>
+      </div>
+      <div class="login-badge">🔒 Accès réservé aux collaborateurs</div>
+
+      <!-- === VUE CONNEXION === -->
+      <div id="view-login">
+        <h2 class="login-h">Connexion</h2>
+        <p class="login-sub">Identifiez-vous avec votre adresse mail professionnelle Leroy Merlin.</p>
+        <div id="login-err" class="login-error-box">❌ Identifiants invalides ou accès non autorisé.</div>
+        <div class="form-group">
+          <label class="form-label">Adresse mail professionnelle</label>
+          <input type="email" id="login-email" class="form-input" placeholder="prenom.nom@leroymerlin.fr" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <input type="password" id="login-pwd" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-full" style="margin-bottom:13px" onclick="doLogin()">Se connecter →</button>
+        <div style="text-align:center">
+          <button onclick="showView('first')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--n400);font-family:inherit;text-decoration:underline">Première connexion ? Cliquez ici</button>
+        </div>
+      </div>
+
+      <!-- === VUE PREMIÈRE CONNEXION === -->
+      <div id="view-first" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <button onclick="showView('login')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--n400);padding:0;line-height:1">←</button>
+          <h2 class="login-h" style="margin-bottom:0">Première connexion</h2>
+        </div>
+        <div id="first-info" class="login-info-box">Saisissez votre adresse mail. Si le service RH a créé votre compte, vous pourrez choisir votre mot de passe.</div>
+        <div id="first-err" class="login-error-box"></div>
+        <div id="first-success" class="login-success-box" style="display:none"></div>
+        <div class="form-group">
+          <label class="form-label">Adresse mail professionnelle</label>
+          <input type="email" id="first-email" class="form-input" placeholder="prenom.nom@leroymerlin.fr">
+        </div>
+        <div id="first-pwd-wrap" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Choisir mon mot de passe</label>
+            <input type="password" id="first-pwd1" class="form-input" placeholder="Minimum 6 caractères">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmer le mot de passe</label>
+            <input type="password" id="first-pwd2" class="form-input" placeholder="Répéter le mot de passe">
+          </div>
+          <button class="btn btn-primary btn-full" onclick="saveFirstPwd()">✓ Créer mon mot de passe</button>
+        </div>
+        <div id="first-check-btn">
+          <button class="btn btn-primary btn-full" onclick="checkFirstEmail()">Vérifier mon adresse →</button>
+        </div>
+      </div>
+
+      <!-- STATUT FIREBASE -->
+      <div id="fb-status-box" class="fb-status setup" style="margin-top:18px">⏳ Connexion à la base de données...</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- BANNIÈRE FIREBASE NON CONFIGURÉ -->
+  <div class="fb-setup-banner" id="fb-banner">
+    ⚠️ <strong>Mode local (données non synchronisées)</strong> — Pour synchroniser les données entre tous les appareils, <a href="#" onclick="showFbGuide();return false">configurez Firebase en 5 minutes →</a>
+  </div>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M3 6h18v2H3zM3 11h12v2H3zM3 16h14v2H3z" fill="white" opacity=".85"/>
+          <circle cx="19" cy="17" r="3" fill="white" opacity=".5"/>
+        </svg>
+      </div>
+      <div class="sb-logo-text">
+        <strong>Dressing Pro</strong>
+        <small>LM Beauvais</small>
+      </div>
+    </div>
+    <div class="sb-user">
+      <div class="sb-av" id="sb-av">EP</div>
+      <div>
+        <span class="sb-uname" id="sb-name">Élise Podevin</span>
+        <span class="sb-urole" id="sb-role">Administratrice RH</span>
+      </div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-foot">
+      <button class="sb-logout" onclick="logout()">↩ Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="main-wrap">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" onclick="toggleSb()">☰</button>
+        <span class="topbar-title" id="topbar-title">Tableau de bord</span>
+      </div>
+      <div class="topbar-right">
+        <div id="cart-wrap" style="display:none">
+          <button class="btn btn-outline btn-sm" style="position:relative" onclick="openCart()">
+            🛒 Panier<span class="cart-count" id="cart-count" style="display:none">0</span>
+          </button>
+        </div>
+        <div id="tb-cred" style="font-size:13px;font-weight:800;color:var(--gd);display:none"></div>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="cart-modal"><div class="modal"><div class="modal-head"><span class="modal-title">🛒 Mon panier</span><button class="modal-x" onclick="cm('cart-modal')">✕</button></div><div class="modal-body" id="cart-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('cart-modal')">Continuer</button><button class="btn btn-primary" onclick="validateCart()">✓ Valider la commande</button></div></div></div>
+<div class="modal-overlay" id="product-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="pm-title">Produit</span><button class="modal-x" onclick="cm('product-modal')">✕</button></div><div class="modal-body" id="pm-body"></div><div class="modal-foot" id="pm-foot"></div></div></div>
+<div class="modal-overlay" id="order-modal"><div class="modal"><div class="modal-head"><span class="modal-title">Modifier la commande</span><button class="modal-x" onclick="cm('order-modal')">✕</button></div><div class="modal-body" id="om-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('order-modal')">Annuler</button><button class="btn btn-primary" onclick="saveOrder()">Enregistrer</button></div></div></div>
+<div class="modal-overlay" id="collab-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="cm-title">Collaborateur</span><button class="modal-x" onclick="cm('collab-modal')">✕</button></div><div class="modal-body" id="cm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('collab-modal')">Annuler</button><button class="btn btn-primary" onclick="saveCollab()">Enregistrer</button></div></div></div>
+<div class="modal-overlay" id="prod-edit-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="pem-title">Produit</span><button class="modal-x" onclick="cm('prod-edit-modal')">✕</button></div><div class="modal-body" id="pem-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('prod-edit-modal')">Annuler</button><button class="btn btn-primary" onclick="saveProduct()">Enregistrer</button></div></div></div>
+<div class="modal-overlay" id="sup-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="supm-title">Commande fournisseur</span><button class="modal-x" onclick="cm('sup-modal')">✕</button></div><div class="modal-body" id="supm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('sup-modal')">Annuler</button><button class="btn btn-primary" onclick="saveSupplier()">Enregistrer</button></div></div></div>
+<div class="modal-overlay" id="adm-modal"><div class="modal"><div class="modal-head"><span class="modal-title" id="adm-title">Administrateur</span><button class="modal-x" onclick="cm('adm-modal')">✕</button></div><div class="modal-body" id="adm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('adm-modal')">Annuler</button><button class="btn btn-primary" onclick="saveAdmin()">Enregistrer</button></div></div></div>
+<div class="modal-overlay" id="collab-detail-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="cdm-title">Fiche collaborateur</span><button class="modal-x" onclick="cm('collab-detail-modal')">✕</button></div><div class="modal-body" id="cdm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('collab-detail-modal')">Fermer</button></div></div></div>
+<div class="modal-overlay" id="fb-guide-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title">🔥 Configurer Firebase (5 min)</span><button class="modal-x" onclick="cm('fb-guide-modal')">✕</button></div><div class="modal-body" id="fb-guide-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('fb-guide-modal')">Fermer</button></div></div></div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// BASE DE DONNÉES LOCALE (fallback si Firebase non configuré)
+// ═══════════════════════════════════════════
+const LOCAL = {
+  cu: null, cart: [], _oid:1006, _sid:2003,
+  editOid:null, editCid:null, editPid:null, editAdmid:null,
+  fbMode: false, // true = Firebase actif
+
+  admins: [
+    {id:'a1',email:'elise.podevin@leroymerlin.fr',pwd:'admin2025',nom:'Podevin',prenom:'Élise',actif:true},
+    {id:'a2',email:'',pwd:'',nom:'',prenom:'',actif:false},
+    {id:'a3',email:'',pwd:'',nom:'',prenom:'',actif:false},
+  ],
+
+  users: [
+    {id:1,email:'marie.dupont@leroymerlin.fr',pwd:'FIRST',nom:'Dupont',prenom:'Marie',actif:true,credits:{vet:320,chu:100},droits:{cl_rest:3,cl_tot:5,chu_used:false},opts:{foulard:false,couv:false,vc:false,therm:false},year:2025},
+    {id:2,email:'thomas.martin@leroymerlin.fr',pwd:'FIRST',nom:'Martin',prenom:'Thomas',actif:true,credits:{vet:500,chu:100},droits:{cl_rest:5,cl_tot:5,chu_used:false},opts:{foulard:false,couv:false,vc:false,therm:false},year:2025},
+    {id:3,email:'sophie.bernard@leroymerlin.fr',pwd:'FIRST',nom:'Bernard',prenom:'Sophie',actif:true,credits:{vet:150,chu:0},droits:{cl_rest:1,cl_tot:5,chu_used:true},opts:{foulard:true,couv:false,vc:false,therm:false},year:2025},
+    {id:4,email:'julien.moreau@leroymerlin.fr',pwd:'FIRST',nom:'Moreau',prenom:'Julien',actif:true,credits:{vet:500,chu:100},droits:{cl_rest:5,cl_tot:5,chu_used:false},opts:{foulard:false,couv:false,vc:false,therm:false},year:2025},
+  ],
+
+  products: [
+    {id:1,nom:'Polo MC Homme',genre:'Homme',cat:'Polos',type:'classique',credits:80,prix:18.50,emoji:'👕',imgs:[],visible:true,desc:'Polo manches courtes 100% coton piqué.',stock:{XS:2,S:5,M:3,L:0,XL:8,XXL:2}},
+    {id:2,nom:'Polo MC Femme',genre:'Femme',cat:'Polos',type:'classique',credits:80,prix:18.50,emoji:'👚',imgs:[],visible:true,desc:'Polo manches courtes coupe femme.',stock:{XS:4,S:6,M:5,L:2,XL:1}},
+    {id:3,nom:'Polo ML Homme',genre:'Homme',cat:'Polos',type:'classique',credits:90,prix:22.00,emoji:'👔',imgs:[],visible:true,desc:'Polo manches longues.',stock:{S:3,M:7,L:4,XL:2}},
+    {id:4,nom:'Polo ML Femme',genre:'Femme',cat:'Polos',type:'classique',credits:90,prix:22.00,emoji:'👔',imgs:[],visible:true,desc:'Polo manches longues coupe femme.',stock:{XS:2,S:4,M:5,L:3,XL:1}},
+    {id:5,nom:'Jean Homme',genre:'Homme',cat:'Pantalons',type:'classique',credits:120,prix:45.00,emoji:'👖',imgs:[],visible:true,desc:'Jean de travail résistant.',stock:{'38':2,'40':5,'42':3,'44':1,'46':0}},
+    {id:6,nom:'Jean Femme',genre:'Femme',cat:'Pantalons',type:'classique',credits:120,prix:45.00,emoji:'👖',imgs:[],visible:true,desc:'Jean de travail coupe femme.',stock:{'36':3,'38':4,'40':6,'42':2}},
+    {id:7,nom:'Polaire Homme',genre:'Homme',cat:'Polaires',type:'classique',credits:110,prix:38.00,emoji:'🧥',imgs:[],visible:true,desc:'Polaire zippée.',stock:{S:1,M:4,L:3,XL:5,XXL:2}},
+    {id:8,nom:'Polaire Femme',genre:'Femme',cat:'Polaires',type:'classique',credits:110,prix:38.00,emoji:'🧥',imgs:[],visible:true,desc:'Polaire zippée coupe femme.',stock:{XS:2,S:3,M:4,L:2,XL:1}},
+    {id:9,nom:'Chaussures Sécu H',genre:'Homme',cat:'Chaussures',type:'chaussures',credits:100,prix:65.00,emoji:'👟',imgs:[],visible:true,desc:'Chaussures de sécurité S1P.',stock:{'39':2,'40':3,'41':5,'42':4,'43':3,'44':2,'45':1,'46':0}},
+    {id:10,nom:'Chaussures Sécu F',genre:'Femme',cat:'Chaussures',type:'chaussures',credits:100,prix:65.00,emoji:'👟',imgs:[],visible:true,desc:'Chaussures de sécurité S1P coupe femme.',stock:{'36':2,'37':3,'38':4,'39':3,'40':2}},
+    {id:11,nom:'Veste Chauffante',genre:'Mixte',cat:'Équipements Spéciaux',type:'option_annuelle',opt_key:'vc',credits:0,prix:89.00,emoji:'🧤',imgs:[],visible:true,desc:'Veste chauffante — 1 par an.',stock:{S:2,M:3,L:4,XL:2}},
+    {id:12,nom:'Foulard LM',genre:'Mixte',cat:'Équipements Spéciaux',type:'option_annuelle',opt_key:'foulard',credits:0,prix:12.00,emoji:'🧣',imgs:[],visible:true,desc:'Foulard LM — 1 par an.',stock:{Unique:15}},
+    {id:13,nom:'Couverture Fraîche',genre:'Mixte',cat:'Équipements Spéciaux',type:'option_annuelle',opt_key:'couv',credits:0,prix:25.00,emoji:'🌊',imgs:[],visible:true,desc:'Couverture rafraîchissante — 1 par an.',stock:{Unique:8}},
+    {id:14,nom:'Vêtement Thermique',genre:'Mixte',cat:'Équipements Spéciaux',type:'option_annuelle',opt_key:'therm',credits:0,prix:42.00,emoji:'🥶',imgs:[],visible:true,desc:'Thermique — 1 par an.',stock:{S:3,M:5,L:4,XL:2}},
+    {id:15,nom:'Gilet Haute Visibilité',genre:'Mixte',cat:'Sécurité',type:'classique',credits:20,prix:8.50,emoji:'🦺',imgs:[],visible:true,desc:'Gilet HV classe 2.',stock:{'S/M':10,'L/XL':12,'XXL':5}},
+    {id:16,nom:'Sweat Logistique',genre:'Mixte',cat:'Logistique',type:'classique',credits:95,prix:32.00,emoji:'🟢',imgs:[],visible:true,desc:'Sweat ML logistique.',stock:{S:4,M:6,L:5,XL:3,XXL:1}},
+    {id:17,nom:'Semelles Confort',genre:'Mixte',cat:'Chaussures',type:'chaussures',credits:0,prix:12.00,emoji:'🦶',imgs:[],visible:true,desc:'Semelles ergonomiques.',stock:{'36-38':5,'39-41':8,'42-44':6,'45-46':3}},
+  ],
+
+  orders: [
+    {id:1001,uid:1,date:'2025-03-10',articles:[{pid:1,taille:'M',credits:80,type:'classique'}],total:80,statut:'remise',comment:'Récupéré le 11/03.',cout:18.50},
+    {id:1002,uid:1,date:'2025-04-02',articles:[{pid:7,taille:'S',credits:110,type:'classique'}],total:110,statut:'prete',comment:'Disponible au bureau RH.',cout:38.00},
+    {id:1003,uid:2,date:'2025-04-08',articles:[{pid:3,taille:'L',credits:90,type:'classique'}],total:90,statut:'preparation',comment:'',cout:22.00},
+    {id:1004,uid:3,date:'2025-02-20',articles:[{pid:9,taille:'42',credits:100,type:'chaussures'},{pid:12,taille:'Unique',credits:0,type:'option_annuelle',opt_key:'foulard'}],total:100,statut:'remise',comment:'',cout:77.00},
+    {id:1005,uid:4,date:'2025-04-10',articles:[{pid:1,taille:'L',credits:80,type:'classique'}],total:80,statut:'attente',comment:'',cout:18.50},
+  ],
+
+  supplier_orders: [
+    {id:2001,fournisseur:'Armor Lux',date:'2025-04-01',num:'ALX-2025-042',articles:[{pid:1,taille:'L',qty:10,prix:18.50}],total:185.00,rec_prevue:'2025-04-15',rec_reelle:null,statut:'commandee',notes:''},
+    {id:2002,fournisseur:'EPI Center',date:'2025-03-20',num:'EPI-2025-018',articles:[{pid:9,taille:'44',qty:3,prix:65.00}],total:195.00,rec_prevue:'2025-03-28',rec_reelle:'2025-03-29',statut:'recue',notes:'Réception OK.'},
+  ],
+
+  settings:{opt_mode:'per_item',credits_vet:500,credits_chu:100,droits_cl:5},
+};
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+const fmtDate=d=>{if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`};
+const today=()=>new Date().toISOString().split('T')[0];
+const stBadge=s=>({attente:'<span class="badge by">⏳ En attente</span>',preparation:'<span class="badge bb">🔄 Préparation</span>',prete:'<span class="badge bo">✓ Prête</span>',remise:'<span class="badge bg">✅ Remise</span>',annulee:'<span class="badge br">❌ Annulée</span>'}[s]||s);
+const stLabel=s=>({attente:'En attente',preparation:'En préparation',prete:'Prête',remise:'Remise effectuée',annulee:'Annulée'}[s]||s);
+const dtag=t=>({classique:'<span class="tag tag-c">Classique</span>',chaussures:'<span class="tag tag-s">Chaussures</span>',option_annuelle:'<span class="tag tag-o">Option annuelle</span>'}[t]||'');
+const pName=id=>LOCAL.products.find(x=>x.id===id)?.nom||'Article supprimé';
+const pObj=id=>LOCAL.products.find(x=>x.id===id);
+const uObj=id=>LOCAL.users.find(x=>x.id===id);
+const liveU=()=>LOCAL.cu&&LOCAL.cu.role==='collab'?LOCAL.users.find(u=>u.id===LOCAL.cu.id):null;
+function openModal(id){document.getElementById(id).classList.add('active')}
+function cm(id){document.getElementById(id).classList.remove('active')}
+function toast(msg,type='s'){
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');el.className=`toast ${type}`;
+  el.innerHTML=`<span>${{s:'✅',e:'❌',w:'⚠️'}[type]||''}</span>${msg}`;
+  c.appendChild(el);
+  setTimeout(()=>{el.style.animation='tOut .3s ease forwards';setTimeout(()=>el.remove(),300);},3500);
+}
+
+// ═══════════════════════════════════════════
+// LOGIN VIEWS
+// ═══════════════════════════════════════════
+function showView(v){
+  document.getElementById('view-login').style.display=v==='login'?'block':'none';
+  document.getElementById('view-first').style.display=v==='first'?'block':'none';
+  document.getElementById('first-err').style.display='none';
+  document.getElementById('first-success').style.display='none';
+  document.getElementById('first-pwd-wrap').style.display='none';
+  document.getElementById('first-check-btn').style.display='block';
+  document.getElementById('first-info').style.display='block';
+  document.getElementById('login-err').style.display='none';
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+function doLogin(){
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  const pwd=document.getElementById('login-pwd').value;
+  if(!email||!pwd){showLoginErr('Veuillez remplir tous les champs.');return;}
+  const adm=LOCAL.admins.find(a=>a.actif&&a.email&&a.email.toLowerCase()===email&&a.pwd===pwd);
+  if(adm){LOCAL.cu={...adm,role:'admin'};startApp();return;}
+  const u=LOCAL.users.find(u=>u.actif&&u.email.toLowerCase()===email&&u.pwd===pwd);
+  if(u){
+    if(u.pwd==='FIRST'){
+      // Redirige vers première connexion
+      document.getElementById('first-email').value=email;
+      showView('first');
+      checkFirstEmail();
+      return;
+    }
+    LOCAL.cu={...u,role:'collab'};startApp();return;
+  }
+  // Check si compte existe mais pas de pwd encore
+  const existU=LOCAL.users.find(u=>u.actif&&u.email.toLowerCase()===email);
+  const existAdm=LOCAL.admins.find(a=>a.actif&&a.email&&a.email.toLowerCase()===email);
+  if((existU||existAdm)&&(existU?.pwd==='FIRST'||existU?.pwd==='')){
+    showLoginErr('Ce compte nécessite une première connexion. Cliquez sur "Première connexion" ci-dessous.');
+  } else {
+    showLoginErr('Identifiants invalides ou accès non autorisé.');
+  }
+}
+
+function showLoginErr(msg){
+  const el=document.getElementById('login-err');
+  el.textContent='❌ '+msg;
+  el.style.display='block';
+}
+
+function checkFirstEmail(){
+  const email=document.getElementById('first-email').value.trim().toLowerCase();
+  const err=document.getElementById('first-err');
+  const info=document.getElementById('first-info');
+  if(!email){err.textContent='Veuillez saisir votre adresse mail.';err.style.display='block';return;}
+  const u=LOCAL.users.find(x=>x.actif&&x.email.toLowerCase()===email);
+  const adm=LOCAL.admins.find(a=>a.actif&&a.email&&a.email.toLowerCase()===email);
+  const found=u||adm;
+  if(!found){
+    err.textContent="❌ Cette adresse mail n'est pas reconnue. Votre compte n'a pas encore été créé par le service RH. Contactez Élise Podevin.";
+    err.style.display='block';return;
+  }
+  const hasPwd=found.pwd&&found.pwd!==''&&found.pwd!=='FIRST';
+  if(hasPwd){
+    err.textContent="❌ Ce compte possède déjà un mot de passe. Connectez-vous normalement. Si vous l'avez oublié, contactez le service RH.";
+    err.style.display='block';return;
+  }
+  err.style.display='none';
+  info.style.display='none';
+  document.getElementById('first-success').textContent=`👋 Bonjour ${found.prenom} ${found.nom} ! Votre compte est prêt. Choisissez votre mot de passe personnel.`;
+  document.getElementById('first-success').style.display='block';
+  document.getElementById('first-pwd-wrap').style.display='block';
+  document.getElementById('first-check-btn').style.display='none';
+}
+
+function saveFirstPwd(){
+  const email=document.getElementById('first-email').value.trim().toLowerCase();
+  const p1=document.getElementById('first-pwd1').value;
+  const p2=document.getElementById('first-pwd2').value;
+  const err=document.getElementById('first-err');
+  if(p1.length<6){err.textContent='❌ Minimum 6 caractères.';err.style.display='block';return;}
+  if(p1!==p2){err.textContent='❌ Les mots de passe ne correspondent pas.';err.style.display='block';return;}
+  const u=LOCAL.users.find(x=>x.email.toLowerCase()===email);
+  const adm=LOCAL.admins.find(a=>a.email&&a.email.toLowerCase()===email);
+  if(u)u.pwd=p1;
+  if(adm)adm.pwd=p1;
+  const found=u||adm;
+  LOCAL.cu=found.role?{...found}:{...found,role:u?'collab':'admin'};
+  if(!LOCAL.cu.role)LOCAL.cu.role=u?'collab':'admin';
+  startApp();
+  toast('✅ Mot de passe créé avec succès ! Bienvenue sur Dressing Pro.');
+}
+
+function startApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('login-err').style.display='none';
+  if(!window._fbReady){
+    document.getElementById('fb-banner').classList.add('show');
+  }
+  initApp();
+}
+
+function logout(){
+  LOCAL.cu=null;LOCAL.cart=[];
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pwd').value='';
+  showView('login');
+}
+
+// ═══════════════════════════════════════════
+// INIT APP
+// ═══════════════════════════════════════════
+function initApp(){
+  const u=LOCAL.cu;
+  document.getElementById('sb-av').textContent=(u.prenom[0]+(u.nom[0]||'')).toUpperCase();
+  document.getElementById('sb-name').textContent=u.prenom+' '+u.nom;
+  document.getElementById('sb-role').textContent=u.role==='admin'?'Administrateur RH':'Collaborateur(trice)';
+  if(u.role==='admin'){
+    buildAdminNav();
+    document.getElementById('cart-wrap').style.display='none';
+    document.getElementById('tb-cred').style.display='none';
+    go('admin-dashboard');
+  } else {
+    buildCollabNav();
+    document.getElementById('cart-wrap').style.display='block';
+    updateCred();
+    go('dashboard');
+  }
+}
+function updateCred(){const u=liveU();if(!u)return;document.getElementById('tb-cred').style.display='block';document.getElementById('tb-cred').textContent='💳 '+u.credits.vet+' crédits';}
+function buildCollabNav(){renderNav([{id:'dashboard',ic:'🏠',lb:'Tableau de bord'},{id:'catalog',ic:'👕',lb:'Catalogue'},{id:'my-orders',ic:'📦',lb:'Mes commandes'},{id:'my-rights',ic:'✅',lb:'Mes droits & crédits'}]);}
+function buildAdminNav(){const p=LOCAL.orders.filter(o=>o.statut==='attente').length;renderNav([{id:'admin-dashboard',ic:'📊',lb:'Tableau de bord'},{id:'admin-orders',ic:'📦',lb:'Commandes',badge:p||null},{id:'admin-collabs',ic:'👥',lb:'Collaborateurs'},{id:'admin-products',ic:'👕',lb:'Catalogue & Stocks'},{id:'admin-suppliers',ic:'🏭',lb:'Fournisseurs'},{id:'admin-finance',ic:'💶',lb:'Bilan financier'},{id:'admin-settings',ic:'⚙️',lb:'Paramètres'}]);}
+function renderNav(items){document.getElementById('sb-nav').innerHTML=items.map(i=>`<button class="nav-item" id="nav-${i.id}" onclick="go('${i.id}')"><span class="nav-icon">${i.ic}</span>${i.lb}${i.badge?`<span class="nav-badge">${i.badge}</span>`:''}</button>`).join('');}
+const TITLES={'dashboard':'Tableau de bord','catalog':'Catalogue produits','my-orders':'Mes commandes','my-rights':'Mes droits & crédits','admin-dashboard':'Tableau de bord','admin-orders':'Gestion des commandes','admin-collabs':'Collaborateurs','admin-products':'Catalogue & Stocks','admin-suppliers':'Commandes fournisseurs','admin-finance':'Bilan financier','admin-settings':'Paramètres'};
+function go(s){
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  const btn=document.getElementById('nav-'+s);if(btn)btn.classList.add('active');
+  document.getElementById('topbar-title').textContent=TITLES[s]||s;
+  const R={'dashboard':rDashboard,'catalog':rCatalog,'my-orders':rMyOrders,'my-rights':rMyRights,'admin-dashboard':rAdminDash,'admin-orders':rAdminOrders,'admin-collabs':rAdminCollabs,'admin-products':rAdminProducts,'admin-suppliers':rAdminSuppliers,'admin-finance':rAdminFinance,'admin-settings':rAdminSettings};
+  const area=document.getElementById('content');
+  if(R[s])area.innerHTML=R[s]();
+  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
+}
+function toggleSb(){document.getElementById('sidebar').classList.toggle('open');}
+
+// ═══════════════════════════════════════════
+// BLOCK CHECK
+// ═══════════════════════════════════════════
+function checkBlock(p,u){
+  if(!u||u.role==='admin')return null;
+  const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);
+  if(tot===0)return'rupture';
+  if(p.type==='classique'&&u.droits.cl_rest<=0)return'droit_epuise';
+  if(p.type==='classique'&&u.credits.vet<p.credits)return'credits_insuf';
+  if(p.type==='chaussures'&&u.droits.chu_used)return'chu_used';
+  if(p.type==='chaussures'&&u.credits.chu<p.credits)return'credits_chu';
+  if(p.type==='option_annuelle'&&u.opts[p.opt_key])return'opt_used';
+  return null;
+}
+function blockHTML(r){return({'rupture':'<div class="alert alert-e">❌ <strong>Rupture de stock</strong> — indisponible actuellement.</div>','droit_epuise':'<div class="alert alert-e">❌ <strong>Droit annuel épuisé</strong> — limite d\'articles classiques atteinte.</div>','credits_insuf':'<div class="alert alert-e">❌ <strong>Crédits vêtements insuffisants.</strong></div>','chu_used':'<div class="alert alert-e">❌ <strong>Droit chaussures utilisé</strong> — 1 paire par an.</div>','credits_chu':'<div class="alert alert-e">❌ <strong>Crédits chaussures insuffisants.</strong></div>','opt_used':'<div class="alert alert-e">❌ <strong>Article optionnel déjà obtenu</strong> cette année.</div>'}[r]||'');}
+
+// ═══════════════════════════════════════════
+// COLLAB — DASHBOARD
+// ═══════════════════════════════════════════
+function rDashboard(){
+  const u=liveU();
+  const myOrd=LOCAL.orders.filter(o=>o.uid===u.id);
+  const pend=myOrd.filter(o=>['attente','preparation','prete'].includes(o.statut));
+  const used=u.droits.cl_tot-u.droits.cl_rest;
+  const oL={foulard:'🧣 Foulard',couv:'🌊 Couverture',vc:'🧤 Veste chauffante',therm:'🥶 Thermique'};
+  const optRows=Object.entries(oL).map(([k,lb])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px">${lb}</span><span class="badge ${u.opts[k]?'bn':'bg'}">${u.opts[k]?'✓ Utilisé':'✓ Disponible'}</span></div>`).join('');
+  const ordRows=pend.length?pend.slice(0,3).map(o=>{const p=pObj(o.articles[0].pid);const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--n100)"><div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:6px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${th}</div><div><div style="font-size:13px;font-weight:700">${o.articles.map(a=>pName(a.pid)).join(', ')}</div><div style="font-size:11px;color:var(--n400)">${fmtDate(o.date)}</div></div></div>${stBadge(o.statut)}</div>`;}).join(''):`<div class="empty" style="padding:16px"><div class="empty-icon">📭</div><div style="font-size:13px;color:var(--n400)">Aucune commande en cours</div></div>`;
+  const warn=u.droits.cl_rest<=1?`<div class="alert alert-w">⚠️ <div>Il vous reste <strong>${u.droits.cl_rest} article(s)</strong> sur votre dotation classique annuelle.</div></div>`:'';
+  return`
+  <div style="margin-bottom:18px"><div style="font-size:21px;font-weight:800;color:var(--n900);letter-spacing:-.4px">Bonjour, ${u.prenom} 👋</div><div style="color:var(--n400);font-size:13px;margin-top:3px">Espace dressing — Leroy Merlin Beauvais</div></div>
+  ${warn}
+  <div class="stats-grid">
+    <div class="stat g"><div class="stat-label">Crédits vêtements</div><div class="stat-val">${u.credits.vet}</div><div class="stat-sub">sur ${LOCAL.settings.credits_vet}</div><div class="prog"><div class="prog-fill" style="width:${(u.credits.vet/LOCAL.settings.credits_vet)*100}%"></div></div></div>
+    <div class="stat ${u.credits.chu>0?'g':'r'}"><div class="stat-label">Crédits chaussures</div><div class="stat-val">${u.credits.chu}</div><div class="stat-sub">sur ${LOCAL.settings.credits_chu}</div><div class="prog"><div class="prog-fill ${u.credits.chu>0?'':'r'}" style="width:${(u.credits.chu/LOCAL.settings.credits_chu)*100}%"></div></div></div>
+    <div class="stat ${u.droits.cl_rest>2?'b':'o'}"><div class="stat-label">Articles classiques</div><div class="stat-val">${u.droits.cl_rest}<span style="font-size:13px;color:var(--n400)">/${u.droits.cl_tot}</span></div><div class="stat-sub">restants cette année</div><div class="prog"><div class="prog-fill o" style="width:${(used/u.droits.cl_tot)*100}%"></div></div></div>
+    <div class="stat ${u.droits.chu_used?'r':'g'}"><div class="stat-label">Droit chaussures</div><div class="stat-val" style="font-size:17px">${u.droits.chu_used?'✗ Utilisé':'✓ Disponible'}</div><div class="stat-sub">1 paire / an</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card"><div class="card-head"><span class="card-title">🛍️ Commandes en cours</span><button class="btn btn-outline btn-sm" onclick="go('my-orders')">Voir tout</button></div><div class="card-body" style="padding:7px 15px">${ordRows}</div></div>
+    <div class="card"><div class="card-head"><span class="card-title">🎁 Options annuelles</span></div><div class="card-body" style="padding:7px 15px">${optRows}</div></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// COLLAB — CATALOG
+// ═══════════════════════════════════════════
+let AF={genre:'Tous',cat:'Toutes'};
+function rCatalog(){
+  const genres=['Tous','Homme','Femme','Mixte'];
+  const cats=['Toutes',...new Set(LOCAL.products.filter(p=>p.visible).map(p=>p.cat))];
+  const list=LOCAL.products.filter(p=>{if(!p.visible)return false;if(AF.genre!=='Tous'&&p.genre!==AF.genre)return false;if(AF.cat!=='Toutes'&&p.cat!==AF.cat)return false;return true;});
+  const u=liveU();
+  const cards=list.map(p=>{
+    const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);
+    const sb=tot===0?'<span class="badge br">Rupture</span>':tot<=3?'<span class="badge bo">Faible</span>':'<span class="badge bg">Dispo</span>';
+    const bl=checkBlock(p,u);
+    const imgH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover" alt="${p.nom}">`:`<div class="prod-emoji">${p.emoji}</div>`;
+    return`<div class="prod-card ${tot===0||bl?'unavail':''}" onclick="openProd(${p.id})"><div class="prod-img">${imgH}<div class="prod-badge-pos">${sb}</div></div><div class="prod-info"><div class="prod-name">${p.nom}</div><div class="prod-cat">${p.genre} · ${p.cat}</div><div class="prod-meta"><span class="prod-credits">${p.credits>0?p.credits+' crédits':'Gratuit'}</span>${bl?'<span style="font-size:10px;color:var(--r)">⚠</span>':''}</div><div style="margin-top:4px">${dtag(p.type)}</div></div></div>`;
+  }).join('');
+  return`
+  <div style="margin-bottom:13px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n400);margin-bottom:6px">Genre</div>
+    <div class="filters">${genres.map(g=>`<button class="filter-btn ${AF.genre===g?'active':''}" onclick="setF('genre','${g}')">${g}</button>`).join('')}</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n400);margin-bottom:6px;margin-top:10px">Catégorie</div>
+    <div class="filters">${cats.map(c=>`<button class="filter-btn ${AF.cat===c?'active':''}" onclick="setF('cat','${c}')">${c}</button>`).join('')}</div>
+  </div>
+  <div class="products-grid">${cards||'<div class="empty"><div class="empty-icon">🔍</div><div class="empty-h">Aucun produit</div></div>'}</div>`;
+}
+function setF(t,v){AF[t]=v;document.getElementById('content').innerHTML=rCatalog();}
+
+function openProd(id){
+  const p=pObj(id);if(!p)return;
+  const u=liveU();const isAdmin=LOCAL.cu.role==='admin';
+  const bl=checkBlock(p,u);
+  document.getElementById('pm-title').textContent=p.nom;
+  let imgH='';
+  if(p.imgs?.length){
+    imgH=`<div style="width:100%;height:190px;border-radius:var(--r12);overflow:hidden;background:var(--gl);margin-bottom:11px"><img id="pm-main" src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover"></div>`;
+    if(p.imgs.length>1)imgH+=`<div style="display:flex;gap:6px;margin-bottom:11px">${p.imgs.map((img,i)=>`<div onclick="document.getElementById('pm-main').src='${img}'" style="width:44px;height:44px;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid ${i===0?'var(--g)':'var(--n200)'}"><img src="${img}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}</div>`;
+  }else{imgH=`<div style="width:100%;height:150px;border-radius:var(--r12);background:linear-gradient(135deg,var(--gl),var(--gm));display:flex;align-items:center;justify-content:center;font-size:70px;margin-bottom:11px">${p.emoji}</div>`;}
+  const szH=Object.entries(p.stock).map(([sz,q])=>`<button class="size-btn" ${q===0?'disabled':''} onclick="selSz(this,'${sz}')" data-q="${q}">${sz}${q>0&&q<=2?`<br><small style="font-size:8px;color:var(--o)">${q}💛</small>`:''}</button>`).join('');
+  document.getElementById('pm-body').innerHTML=`${imgH}<div style="margin-bottom:9px">${dtag(p.type)} <span class="badge bn" style="margin-left:4px">${p.genre}</span> <span class="badge bn">${p.cat}</span></div><p style="font-size:13px;color:var(--n500);margin-bottom:12px;line-height:1.5">${p.desc}</p>${bl?blockHTML(bl):''}${!bl||isAdmin?`<div style="font-weight:700;font-size:12px;color:var(--n700);margin-bottom:7px;text-transform:uppercase;letter-spacing:.4px">Choisir une taille :</div><div class="size-grid">${szH}</div><div id="pm-sz-info" style="font-size:12px;color:var(--n400);margin-top:3px;min-height:15px"></div>`:''}<div style="margin-top:12px;padding:11px;background:var(--n50);border-radius:var(--r8);border:1px solid var(--n200)">${p.credits>0?`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Coût en crédits</span><strong style="color:var(--gd)">${p.credits} crédits</strong></div>`:`<div style="font-size:13px;color:var(--gd);font-weight:700">✓ Gratuit</div>`}${!isAdmin&&u?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--n400);margin-top:3px"><span>Vos crédits</span><span>${p.type==='chaussures'?u.credits.chu+' cr. chaussures':u.credits.vet+' cr. vêtements'}</span></div>`:''}</div>`;
+  document.getElementById('pm-foot').innerHTML=isAdmin||bl?`<button class="btn btn-ghost" onclick="cm('product-modal')">Fermer</button>`:`<button class="btn btn-ghost" onclick="cm('product-modal')">Annuler</button><button class="btn btn-primary" id="pm-add" onclick="addCart(${p.id})" disabled>🛒 Ajouter au panier</button>`;
+  window._sz=null;openModal('product-modal');
+}
+function selSz(btn,sz){document.querySelectorAll('#pm-body .size-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');window._sz=sz;document.getElementById('pm-sz-info').textContent=`Taille ${sz} — ${btn.dataset.q} disponible(s)`;const ab=document.getElementById('pm-add');if(ab)ab.disabled=false;}
+
+// ═══════════════════════════════════════════
+// CART
+// ═══════════════════════════════════════════
+function addCart(pid){
+  if(!window._sz){toast('Choisissez une taille.','w');return;}
+  const p=pObj(pid);const u=liveU();
+  if(checkBlock(p,u)){toast('Commande impossible.','e');return;}
+  if(LOCAL.cart.find(c=>c.pid===pid&&c.sz===window._sz)){toast('Déjà dans le panier.','w');return;}
+  LOCAL.cart.push({pid,sz:window._sz,credits:p.credits,type:p.type,opt_key:p.opt_key});
+  cm('product-modal');updateCartBadge();toast(`✅ ${p.nom} (${window._sz}) ajouté !`);
+}
+function updateCartBadge(){const n=LOCAL.cart.length;const b=document.getElementById('cart-count');b.textContent=n;b.style.display=n>0?'flex':'none';}
+function openCart(){
+  const u=liveU();const bd=document.getElementById('cart-body');
+  if(!LOCAL.cart.length){bd.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-h">Panier vide</div></div>';openModal('cart-modal');return;}
+  let tV=0,tC=0,al='';
+  LOCAL.cart.forEach(c=>{if(c.type==='chaussures')tC+=c.credits;else tV+=c.credits;});
+  const clN=LOCAL.cart.filter(c=>c.type==='classique').length;
+  if(tV>u.credits.vet)al+=`<div class="alert alert-e">❌ Crédits vêtements insuffisants.</div>`;
+  if(tC>u.credits.chu)al+=`<div class="alert alert-e">❌ Crédits chaussures insuffisants.</div>`;
+  if(clN>u.droits.cl_rest)al+=`<div class="alert alert-w">⚠️ Trop d'articles classiques (${clN} demandés, ${u.droits.cl_rest} disponibles).</div>`;
+  const items=LOCAL.cart.map((c,i)=>{const p=pObj(c.pid);const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--n100)"><div style="width:42px;height:42px;border-radius:7px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${th}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${p?.nom||'?'}</div><div style="font-size:11px;color:var(--n400)">Taille ${c.sz} · ${dtag(c.type)}</div></div><div style="font-size:13px;font-weight:800;color:var(--gd);white-space:nowrap">${c.credits>0?c.credits+' cr.':'Gratuit'}</div><button style="background:none;border:none;cursor:pointer;color:var(--n300);font-size:16px;padding:3px" onmouseover="this.style.color='var(--r)'" onmouseout="this.style.color='var(--n300)'" onclick="removeCart(${i})">✕</button></div>`;}).join('');
+  bd.innerHTML=`${al}${items}<div style="padding:11px;background:var(--n50);border-radius:var(--r8);margin-top:9px;border:1px solid var(--n200)">${tV>0?`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>Crédits vêtements utilisés</span><strong style="color:var(--gd)">${tV}</strong></div>`:''}<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--n400)"><span>Crédits restants après commande</span><strong>${u.credits.vet-tV}</strong></div></div>`;
+  openModal('cart-modal');
+}
+function removeCart(i){LOCAL.cart.splice(i,1);updateCartBadge();openCart();}
+function validateCart(){
+  const u=LOCAL.users.find(x=>x.id===LOCAL.cu.id);if(!u||!LOCAL.cart.length)return;
+  let tV=0,tC=0,clN=0,hasChu=false;
+  for(const c of LOCAL.cart){
+    if(c.type==='chaussures'){tC+=c.credits;hasChu=true;}else tV+=c.credits;
+    if(c.type==='classique')clN++;
+    if(c.type==='option_annuelle'&&u.opts[c.opt_key]){toast('Option annuelle déjà utilisée.','e');return;}
+  }
+  if(tV>u.credits.vet){toast('Crédits insuffisants.','e');return;}
+  if(tC>u.credits.chu){toast('Crédits chaussures insuffisants.','e');return;}
+  if(clN>u.droits.cl_rest){toast('Droits insuffisants.','e');return;}
+  if(hasChu&&u.droits.chu_used){toast('Droit chaussures déjà utilisé.','e');return;}
+  for(const c of LOCAL.cart){const p=pObj(c.pid);if(!p||(p.stock[c.sz]||0)===0){toast(`Rupture : ${p?.nom} taille ${c.sz}.`,'e');return;}}
+  const arts=LOCAL.cart.map(c=>({pid:c.pid,taille:c.sz,credits:c.credits,type:c.type,opt_key:c.opt_key}));
+  const newO={id:LOCAL._oid++,uid:u.id,date:today(),articles:arts,total:tV+tC,statut:'attente',comment:'',cout:LOCAL.cart.reduce((s,c)=>s+(pObj(c.pid)?.prix||0),0)};
+  LOCAL.orders.push(newO);
+  u.credits.vet-=tV;u.credits.chu-=tC;u.droits.cl_rest-=clN;
+  if(hasChu)u.droits.chu_used=true;
+  LOCAL.cart.forEach(c=>{if(c.type==='option_annuelle')u.opts[c.opt_key]=true;const p=pObj(c.pid);if(p)p.stock[c.sz]=Math.max(0,(p.stock[c.sz]||0)-1);});
+  LOCAL.cart=[];updateCartBadge();updateCred();cm('cart-modal');
+  toast(`🎉 Commande #${newO.id} validée !`);go('my-orders');
+}
+
+// ═══════════════════════════════════════════
+// COLLAB — MY ORDERS
+// ═══════════════════════════════════════════
+function rMyOrders(){
+  const u=liveU();
+  const ords=[...LOCAL.orders].filter(o=>o.uid===u.id).sort((a,b)=>b.id-a.id);
+  if(!ords.length)return`<div class="empty"><div class="empty-icon">📦</div><div class="empty-h">Aucune commande</div></div>`;
+  return`<div style="display:flex;flex-direction:column;gap:12px">${ords.map(o=>{const si=['attente','preparation','prete','remise'].indexOf(o.statut);const steps=['En attente','Préparation','Prête','Remise'];return`<div class="card"><div class="card-head"><div><span style="font-size:14px;font-weight:800">Commande #${o.id}</span><span style="font-size:12px;color:var(--n400);margin-left:9px">${fmtDate(o.date)}</span></div>${stBadge(o.statut)}</div><div class="card-body">${o.statut!=='annulee'?`<div class="order-steps">${steps.map((s,i)=>`<div class="step ${i<si?'done':i===si?'cur':''}">${s}</div>`).join('')}</div>`:''}<div style="margin:10px 0">${o.articles.map(a=>{const p=pObj(a.pid);const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--n100)"><div style="width:30px;height:30px;border-radius:5px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${th}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${p?.nom||'?'}</div><div style="font-size:11px;color:var(--n400)">Taille ${a.taille} · ${a.credits>0?a.credits+' crédits':'Gratuit'}</div></div></div>`;}).join('')}</div>${o.comment?`<div class="alert alert-i" style="margin-bottom:0">💬 <div><strong>Message RH :</strong> ${o.comment}</div></div>`:''}<div style="font-size:12px;color:var(--n400);margin-top:7px">Total : ${o.total} crédits</div></div></div>`;}).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════
+// COLLAB — MY RIGHTS
+// ═══════════════════════════════════════════
+function rMyRights(){
+  const u=liveU();
+  const oL={foulard:'🧣 Foulard',couv:'🌊 Couverture rafraîchissante',vc:'🧤 Veste chauffante',therm:'🥶 Vêtement thermique'};
+  return`<div style="display:grid;gap:14px">
+    <div class="card"><div class="card-head"><span class="card-title">📋 Dotation classique</span></div><div class="card-body">
+      <div class="rights-grid">
+        <div class="right-box ${u.droits.cl_rest>0?'ok':'no'}"><div class="right-box-val">${u.droits.cl_rest}</div><div class="right-box-lbl">Restants</div></div>
+        <div class="right-box"><div class="right-box-val">${u.droits.cl_tot-u.droits.cl_rest}</div><div class="right-box-lbl">Utilisés</div></div>
+        <div class="right-box"><div class="right-box-val">${u.droits.cl_tot}</div><div class="right-box-lbl">Total/an</div></div>
+      </div>
+      <div class="prog" style="height:7px"><div class="prog-fill" style="width:${((u.droits.cl_tot-u.droits.cl_rest)/u.droits.cl_tot)*100}%"></div></div>
+    </div></div>
+    <div class="card"><div class="card-head"><span class="card-title">👟 Dotation chaussures</span></div><div class="card-body">
+      ${u.droits.chu_used?'<div class="alert alert-e" style="margin-bottom:7px">✗ Vous avez déjà utilisé votre droit à 1 paire de chaussures.</div>':'<div class="alert alert-s" style="margin-bottom:7px">✓ Votre droit à 1 paire de chaussures est disponible.</div>'}
+      <div style="font-size:12px;color:var(--n500)">Crédits chaussures : <strong>${u.credits.chu}</strong></div>
+    </div></div>
+    <div class="card"><div class="card-head"><span class="card-title">🎁 Articles optionnels annuels</span></div><div class="card-body">
+      ${Object.entries(oL).map(([k,lb])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px">${lb}</span><span class="badge ${u.opts[k]?'bn':'bg'}">${u.opts[k]?'✓ Déjà obtenu':'✓ Disponible'}</span></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-head"><span class="card-title">💳 Crédits</span></div><div class="card-body">
+      <div style="background:var(--n50);border-radius:var(--r8);padding:13px;border:1px solid var(--n200)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700;color:var(--n600)">Crédits vêtements</span><span style="font-size:13px;font-weight:800">${u.credits.vet} / ${LOCAL.settings.credits_vet}</span></div>
+        <div class="prog" style="margin-bottom:10px"><div class="prog-fill" style="width:${(u.credits.vet/LOCAL.settings.credits_vet)*100}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700;color:var(--n600)">Crédits chaussures</span><span style="font-size:13px;font-weight:800">${u.credits.chu} / ${LOCAL.settings.credits_chu}</span></div>
+        <div class="prog"><div class="prog-fill" style="width:${(u.credits.chu/LOCAL.settings.credits_chu)*100}%"></div></div>
+      </div>
+    </div></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// ADMIN — DASHBOARD
+// ═══════════════════════════════════════════
+function rAdminDash(){
+  const O=LOCAL.orders;
+  const att=O.filter(o=>o.statut==='attente').length,prep=O.filter(o=>o.statut==='preparation').length,pret=O.filter(o=>o.statut==='prete').length,rem=O.filter(o=>o.statut==='remise').length;
+  const cost=O.filter(o=>o.statut==='remise').reduce((s,o)=>s+o.cout,0);
+  const lowP=LOCAL.products.filter(p=>{const t=Object.values(p.stock).reduce((a,b)=>a+b,0);return t>0&&t<=3&&p.visible;});
+  const outP=LOCAL.products.filter(p=>Object.values(p.stock).reduce((a,b)=>a+b,0)===0&&p.visible);
+  const recent=[...O].sort((a,b)=>b.id-a.id).slice(0,6);
+  return`
+  <div class="stats-grid">
+    <div class="stat b"><div class="stat-label">Collaborateurs</div><div class="stat-val">${LOCAL.users.filter(u=>u.actif).length}</div></div>
+    <div class="stat o"><div class="stat-label">En attente</div><div class="stat-val">${att}</div></div>
+    <div class="stat y"><div class="stat-label">En préparation</div><div class="stat-val">${prep}</div></div>
+    <div class="stat g"><div class="stat-label">Prêtes</div><div class="stat-val">${pret}</div></div>
+    <div class="stat g"><div class="stat-label">Remises</div><div class="stat-val">${rem}</div></div>
+    <div class="stat r"><div class="stat-label">Ruptures</div><div class="stat-val">${outP.length}</div></div>
+    <div class="stat o"><div class="stat-label">Stocks faibles</div><div class="stat-val">${lowP.length}</div></div>
+    <div class="stat g"><div class="stat-label">Coût distribué</div><div class="stat-val">${cost.toFixed(0)}€</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card"><div class="card-head"><span class="card-title">📋 Dernières commandes</span><button class="btn btn-outline btn-sm" onclick="go('admin-orders')">Voir tout</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Statut</th></tr></thead><tbody>
+    ${recent.map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td>${stBadge(o.statut)}</td></tr>`;}).join('')}
+    </tbody></table></div></div>
+    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock</span></div><div class="card-body" style="padding:9px 15px">
+    ${outP.slice(0,5).map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px;display:flex;align-items:center;gap:7px"><span class="stock-dot out"></span>${p.nom}</span><span class="badge br">Rupture</span></div>`).join('')}
+    ${lowP.slice(0,4).map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px;display:flex;align-items:center;gap:7px"><span class="stock-dot low"></span>${p.nom}</span><span class="badge bo">Faible</span></div>`).join('')}
+    ${!outP.length&&!lowP.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}
+    </div></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// ADMIN — ORDERS
+// ═══════════════════════════════════════════
+function rAdminOrders(){
+  return`<div class="sh">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="text" class="search-input" placeholder="Rechercher..." id="ord-s" oninput="filterOrders()">
+      <select class="sel-input" id="ord-st" onchange="filterOrders()">
+        <option value="">Tous les statuts</option>
+        <option value="attente">En attente</option><option value="preparation">En préparation</option>
+        <option value="prete">Prête</option><option value="remise">Remise</option><option value="annulee">Annulée</option>
+      </select>
+    </div>
+  </div>
+  <div class="card"><div class="tbl-wrap"><table>
+    <thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Articles</th><th>Crédits</th><th>Coût</th><th>Statut</th><th></th></tr></thead>
+    <tbody id="ord-tbody">${ordRows(LOCAL.orders)}</tbody>
+  </table></div></div>`;
+}
+function ordRows(ords){return[...ords].sort((a,b)=>b.id-a.id).map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.articles.map(a=>pName(a.pid)).join(', ')}</td><td>${o.total}</td><td>${o.cout.toFixed(2)}€</td><td>${stBadge(o.statut)}</td><td><button class="btn btn-xs btn-outline" onclick="openOrdEdit(${o.id})">Modifier</button></td></tr>`;}).join('');}
+function filterOrders(){const s=document.getElementById('ord-s')?.value.toLowerCase()||'';const st=document.getElementById('ord-st')?.value||'';const list=LOCAL.orders.filter(o=>{const u=uObj(o.uid);return(!s||`${u?.prenom} ${u?.nom} #${o.id}`.toLowerCase().includes(s))&&(!st||o.statut===st);});const tb=document.getElementById('ord-tbody');if(tb)tb.innerHTML=ordRows(list);}
+function openOrdEdit(id){
+  LOCAL.editOid=id;const o=LOCAL.orders.find(x=>x.id===id);const u=uObj(o.uid);
+  document.getElementById('om-body').innerHTML=`<div style="margin-bottom:12px;padding:10px;background:var(--n50);border-radius:var(--r8)"><div style="font-size:13px;font-weight:800;margin-bottom:3px">Commande #${o.id} — ${u?.prenom} ${u?.nom}</div><div style="font-size:12px;color:var(--n400)">${fmtDate(o.date)} · ${o.total} crédits · ${o.cout.toFixed(2)}€</div></div>
+  <div class="form-group"><label class="form-label">Statut</label><select class="form-input sel-input" id="oe-st"><option value="attente" ${o.statut==='attente'?'selected':''}>En attente</option><option value="preparation" ${o.statut==='preparation'?'selected':''}>En préparation</option><option value="prete" ${o.statut==='prete'?'selected':''}>Prête</option><option value="remise" ${o.statut==='remise'?'selected':''}>Remise effectuée</option><option value="annulee" ${o.statut==='annulee'?'selected':''}>Annulée</option></select></div>
+  <div class="form-group"><label class="form-label">Commentaire RH</label><textarea class="form-textarea" id="oe-cm">${o.comment}</textarea></div>
+  <div class="form-group"><label class="form-label">Coût réel (€)</label><input type="number" step="0.01" class="form-input" id="oe-cost" value="${o.cout}"></div>`;
+  openModal('order-modal');
+}
+function saveOrder(){const o=LOCAL.orders.find(x=>x.id===LOCAL.editOid);if(!o)return;const prev=o.statut;o.statut=document.getElementById('oe-st').value;o.comment=document.getElementById('oe-cm').value;o.cout=parseFloat(document.getElementById('oe-cost').value)||o.cout;cm('order-modal');if(o.statut!==prev)toast(`✅ Commande #${o.id} → ${stLabel(o.statut)}`);else toast('✅ Commande mise à jour.');go('admin-orders');}
+
+// ═══════════════════════════════════════════
+// ADMIN — COLLABS
+// ═══════════════════════════════════════════
+function rAdminCollabs(){
+  return`<div class="sh"><input type="text" class="search-input" placeholder="Rechercher..." id="col-s" oninput="filterCollabs()"><button class="btn btn-primary btn-sm" onclick="openCollabModal()">+ Ajouter</button></div>
+  <div class="card"><div class="tbl-wrap"><table>
+    <thead><tr><th>Collaborateur</th><th>Email</th><th>Droits cl.</th><th>Chaussures</th><th>Crédits vêt.</th><th>1ère connexion</th><th>Statut</th><th></th></tr></thead>
+    <tbody id="col-tbody">${collabRows(LOCAL.users)}</tbody>
+  </table></div></div>
+  <div style="margin-top:13px"><button class="btn btn-ghost" onclick="resetAnnuel()">🔄 Réinitialisation annuelle globale</button></div>`;
+}
+function collabRows(list){return list.map(c=>`<tr><td><strong>${c.prenom} ${c.nom}</strong></td><td style="font-size:11px;font-family:'JetBrains Mono',monospace">${c.email}</td><td>${c.droits.cl_rest}/${c.droits.cl_tot}</td><td>${c.droits.chu_used?'<span class="badge bn">Utilisé</span>':'<span class="badge bg">Disponible</span>'}</td><td>${c.credits.vet}</td><td>${c.pwd==='FIRST'||c.pwd===''?'<span class="badge by">⏳ En attente</span>':'<span class="badge bg">✓ Connecté</span>'}</td><td>${c.actif?'<span class="badge bg">Actif</span>':'<span class="badge br">Inactif</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openCollabDetail(${c.id})">Fiche</button><button class="btn btn-xs btn-ghost" onclick="openCollabModal(${c.id})">Modifier</button></td></tr>`).join('');}
+function filterCollabs(){const s=document.getElementById('col-s')?.value.toLowerCase();const list=LOCAL.users.filter(u=>!s||`${u.prenom} ${u.nom} ${u.email}`.toLowerCase().includes(s));const tb=document.getElementById('col-tbody');if(tb)tb.innerHTML=collabRows(list);}
+
+function openCollabModal(id){
+  LOCAL.editCid=id||null;const c=id?LOCAL.users.find(u=>u.id===id):null;
+  document.getElementById('cm-title').textContent=c?`Modifier : ${c.prenom} ${c.nom}`:'Ajouter un collaborateur';
+  document.getElementById('cm-body').innerHTML=`
+    <div class="form-row"><div class="form-group"><label class="form-label">Prénom</label><input type="text" class="form-input" id="cu-pre" value="${c?.prenom||''}"></div><div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="cu-nom" value="${c?.nom||''}"></div></div>
+    <div class="form-group"><label class="form-label">Email professionnel</label><input type="email" class="form-input" id="cu-email" value="${c?.email||''}"></div>
+    <div class="form-group"><label class="form-label">Mot de passe ${c?'(vide = inchangé)':''}</label><input type="password" class="form-input" id="cu-pwd" placeholder="${c?'Laisser vide pour ne pas changer':'Laisser vide = première connexion requise'}"></div>
+    <div class="sep"></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Crédits vêtements</label><input type="number" class="form-input" id="cu-cvet" value="${c?.credits.vet??500}"></div><div class="form-group"><label class="form-label">Crédits chaussures</label><input type="number" class="form-input" id="cu-cchu" value="${c?.credits.chu??100}"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Articles classiques restants</label><input type="number" class="form-input" id="cu-clr" value="${c?.droits.cl_rest??5}" min="0" max="20"></div><div class="form-group"><label class="form-label">Droit chaussures</label><select class="form-input sel-input" id="cu-chud"><option value="false" ${!c?.droits.chu_used?'selected':''}>Disponible</option><option value="true" ${c?.droits.chu_used?'selected':''}>Utilisé</option></select></div></div>
+    <div class="sep"></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--n500);margin-bottom:9px">Options annuelles</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      ${[['foulard','🧣 Foulard'],['couv','🌊 Couverture'],['vc','🧤 Veste chauffante'],['therm','🥶 Thermique']].map(([k,lb])=>`<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px;border:1px solid var(--n200);border-radius:var(--r8)"><input type="checkbox" id="cu-opt-${k}" ${c?.opts[k]?'checked':''} style="accent-color:var(--g)"> ${lb}</label>`).join('')}
+    </div>
+    <div class="sep"></div>
+    <div class="form-group"><label class="form-label">Statut</label><select class="form-input sel-input" id="cu-actif"><option value="true" ${c?.actif!==false?'selected':''}>Actif</option><option value="false" ${c?.actif===false?'selected':''}>Inactif</option></select></div>
+    ${!id?`<div class="alert alert-i" style="margin-top:8px">ℹ️ Si vous ne définissez pas de mot de passe, le collaborateur devra faire une <strong>première connexion</strong> pour en choisir un.</div>`:''}`;
+  openModal('collab-modal');
+}
+function saveCollab(){
+  const pre=document.getElementById('cu-pre').value.trim();const nom=document.getElementById('cu-nom').value.trim();const email=document.getElementById('cu-email').value.trim().toLowerCase();
+  if(!pre||!nom||!email){toast('Champs obligatoires manquants.','e');return;}
+  if(LOCAL.editCid){
+    const c=LOCAL.users.find(u=>u.id===LOCAL.editCid);
+    c.prenom=pre;c.nom=nom;c.email=email;
+    const pwd=document.getElementById('cu-pwd').value;if(pwd)c.pwd=pwd;
+    c.credits.vet=parseInt(document.getElementById('cu-cvet').value)||0;c.credits.chu=parseInt(document.getElementById('cu-cchu').value)||0;
+    c.droits.cl_rest=parseInt(document.getElementById('cu-clr').value)||0;c.droits.chu_used=document.getElementById('cu-chud').value==='true';
+    ['foulard','couv','vc','therm'].forEach(k=>{c.opts[k]=document.getElementById(`cu-opt-${k}`).checked;});
+    c.actif=document.getElementById('cu-actif').value==='true';
+    toast('✅ Collaborateur mis à jour.');
+  }else{
+    const pwd=document.getElementById('cu-pwd').value||'FIRST';
+    const nid=Math.max(...LOCAL.users.map(u=>u.id))+1;
+    LOCAL.users.push({id:nid,email,pwd,nom,prenom:pre,actif:true,credits:{vet:parseInt(document.getElementById('cu-cvet').value)||500,chu:parseInt(document.getElementById('cu-cchu').value)||100},droits:{cl_rest:parseInt(document.getElementById('cu-clr').value)||5,cl_tot:5,chu_used:false},opts:{foulard:false,couv:false,vc:false,therm:false},year:new Date().getFullYear()});
+    toast('✅ Collaborateur ajouté. Il pourra faire sa première connexion.');
+  }
+  cm('collab-modal');go('admin-collabs');
+}
+function openCollabDetail(id){
+  const c=LOCAL.users.find(u=>u.id===id);if(!c)return;
+  const ords=LOCAL.orders.filter(o=>o.uid===id);const remOrd=ords.filter(o=>o.statut==='remise');
+  const totalCost=remOrd.reduce((s,o)=>s+o.cout,0);
+  document.getElementById('cdm-title').textContent=`Fiche — ${c.prenom} ${c.nom}`;
+  document.getElementById('cdm-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="right-box ${c.droits.cl_rest>0?'ok':'no'}"><div class="right-box-val">${c.droits.cl_rest}/${c.droits.cl_tot}</div><div class="right-box-lbl">Droits classiques</div></div>
+      <div class="right-box ${!c.droits.chu_used?'ok':'no'}"><div class="right-box-val" style="font-size:13px">${c.droits.chu_used?'Utilisé':'Dispo'}</div><div class="right-box-lbl">Chaussures</div></div>
+      <div class="right-box g"><div class="right-box-val">${totalCost.toFixed(0)}€</div><div class="right-box-lbl">Coût total</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="padding:9px;background:var(--n50);border-radius:var(--r8);border:1px solid var(--n200)"><div style="font-size:10px;font-weight:700;color:var(--n400);margin-bottom:2px">Crédits vêtements</div><div style="font-size:17px;font-weight:800">${c.credits.vet}<span style="font-size:11px;color:var(--n400)">/${LOCAL.settings.credits_vet}</span></div></div>
+      <div style="padding:9px;background:var(--n50);border-radius:var(--r8);border:1px solid var(--n200)"><div style="font-size:10px;font-weight:700;color:var(--n400);margin-bottom:2px">Crédits chaussures</div><div style="font-size:17px;font-weight:800">${c.credits.chu}<span style="font-size:11px;color:var(--n400)">/${LOCAL.settings.credits_chu}</span></div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--n500);margin-bottom:8px">Commandes (${ords.length})</div>
+    ${ords.length?`<div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Date</th><th>Articles</th><th>Coût</th><th>Statut</th></tr></thead><tbody>${[...ords].sort((a,b)=>b.id-a.id).map(o=>`<tr><td>#${o.id}</td><td>${fmtDate(o.date)}</td><td style="font-size:12px">${o.articles.map(a=>pName(a.pid)).join(', ')}</td><td>${o.cout.toFixed(2)}€</td><td>${stBadge(o.statut)}</td></tr>`).join('')}</tbody></table></div>`:'<div style="color:var(--n400);font-size:13px">Aucune commande.</div>'}`;
+  openModal('collab-detail-modal');
+}
+function resetAnnuel(){
+  if(!confirm('Confirmer la réinitialisation annuelle globale ?'))return;
+  LOCAL.users.forEach(u=>{u.credits.vet=LOCAL.settings.credits_vet;u.credits.chu=LOCAL.settings.credits_chu;u.droits.cl_rest=LOCAL.settings.droits_cl;u.droits.chu_used=false;u.opts={foulard:false,couv:false,vc:false,therm:false};u.year=new Date().getFullYear();});
+  toast('🔄 Réinitialisation annuelle effectuée.');go('admin-collabs');
+}
+
+// ═══════════════════════════════════════════
+// ADMIN — PRODUCTS
+// ═══════════════════════════════════════════
+function rAdminProducts(){
+  return`<div class="sh">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="text" class="search-input" placeholder="Rechercher..." id="prod-s" oninput="filterProds()">
+      <select class="sel-input" id="prod-cat-f" onchange="filterProds()"><option value="">Toutes catégories</option>${[...new Set(LOCAL.products.map(p=>p.cat))].map(c=>`<option>${c}</option>`).join('')}</select>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openProdEdit()">+ Nouveau produit</button>
+  </div>
+  <div class="card"><div class="tbl-wrap"><table>
+    <thead><tr><th>Article</th><th>Genre</th><th>Catégorie</th><th>Dotation</th><th>Crédits</th><th>Prix réel</th><th>Stock</th><th>Visible</th><th></th></tr></thead>
+    <tbody id="prod-tbody">${prodRows(LOCAL.products)}</tbody>
+  </table></div></div>`;
+}
+function prodRows(list){return list.map(p=>{const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);const sc=tot===0?'out':tot<=3?'low':'ok';const szH=Object.entries(p.stock).map(([s,q])=>`<span style="display:inline-block;margin:1px;padding:1px 5px;border-radius:3px;font-size:10px;background:${q===0?'var(--rl)':q<=2?'var(--yl)':'var(--gl)'};color:${q===0?'var(--r)':q<=2?'#92400e':'var(--gd)'}">${s}:${q}</span>`).join('');const thH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:15px">${p.emoji}</span>`;return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="prod-thumb-sm">${thH}</div><strong>${p.nom}</strong></div></td><td>${p.genre}</td><td>${p.cat}</td><td>${dtag(p.type)}</td><td>${p.credits}</td><td>${p.prix.toFixed(2)}€</td><td><div style="display:flex;align-items:center;gap:5px"><span class="stock-dot ${sc}"></span><strong>${tot}</strong></div><div style="margin-top:2px">${szH}</div></td><td>${p.visible?'<span class="badge bg">Oui</span>':'<span class="badge bn">Non</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openProdEdit(${p.id})">Modifier</button><button class="btn btn-xs btn-ghost" onclick="toggleVis(${p.id})">${p.visible?'Masquer':'Afficher'}</button></td></tr>`;}).join('');}
+function filterProds(){const s=document.getElementById('prod-s')?.value.toLowerCase()||'';const cat=document.getElementById('prod-cat-f')?.value||'';const list=LOCAL.products.filter(p=>(!s||p.nom.toLowerCase().includes(s))&&(!cat||p.cat===cat));const tb=document.getElementById('prod-tbody');if(tb)tb.innerHTML=prodRows(list);}
+function toggleVis(id){const p=pObj(id);if(p){p.visible=!p.visible;toast(`✅ ${p.nom} ${p.visible?'affiché':'masqué'}.`);go('admin-products');}}
+
+function openProdEdit(id){
+  LOCAL.editPid=id||null;const p=id?pObj(id):null;
+  document.getElementById('pem-title').textContent=p?`Modifier : ${p.nom}`:'Nouveau produit';
+  const stockRows=p?Object.entries(p.stock).map(([sz,q])=>`<div style="display:flex;gap:7px;margin-bottom:6px;align-items:center"><input type="text" value="${sz}" class="form-input" style="width:78px;padding:7px 9px" placeholder="Taille" data-sz><input type="number" value="${q}" class="form-input" style="width:72px;padding:7px 9px" placeholder="Qté" data-q><button type="button" class="btn btn-xs btn-danger" onclick="this.parentElement.remove()">✕</button></div>`).join(''):`<div style="display:flex;gap:7px;margin-bottom:6px;align-items:center"><input type="text" class="form-input" style="width:78px;padding:7px 9px" placeholder="Taille" data-sz><input type="number" value="0" class="form-input" style="width:72px;padding:7px 9px" data-q><button type="button" class="btn btn-xs btn-danger" onclick="this.parentElement.remove()">✕</button></div>`;
+  const imgsH=p?.imgs?.length?p.imgs.map((img,i)=>`<div class="img-item"><img src="${img}" alt=""><button class="img-del" type="button" onclick="removeImgIdx(${i})">✕</button>${i===0?'<span class="img-primary-tag">Principale</span>':''}</div>`).join(''):'';
+  document.getElementById('pem-body').innerHTML=`
+    <div class="form-row"><div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="pe-nom" value="${p?.nom||''}"></div><div class="form-group"><label class="form-label">Emoji (fallback)</label><input type="text" class="form-input" id="pe-emoji" value="${p?.emoji||'👕'}" style="font-size:18px"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Genre</label><select class="form-input sel-input" id="pe-genre"><option ${p?.genre==='Homme'?'selected':''}>Homme</option><option ${p?.genre==='Femme'?'selected':''}>Femme</option><option ${p?.genre==='Mixte'?'selected':''}>Mixte</option></select></div><div class="form-group"><label class="form-label">Catégorie</label><input type="text" class="form-input" id="pe-cat" value="${p?.cat||''}" list="cats-dl"><datalist id="cats-dl">${[...new Set(LOCAL.products.map(x=>x.cat))].map(c=>`<option value="${c}">`).join('')}</datalist></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Type dotation</label><select class="form-input sel-input" id="pe-type" onchange="typeChg()"><option value="classique" ${p?.type==='classique'?'selected':''}>Classique</option><option value="chaussures" ${p?.type==='chaussures'?'selected':''}>Chaussures</option><option value="option_annuelle" ${p?.type==='option_annuelle'?'selected':''}>Option annuelle</option></select></div><div class="form-group" id="pe-optkey-wrap" style="display:${p?.type==='option_annuelle'?'block':'none'}"><label class="form-label">Clé option</label><select class="form-input sel-input" id="pe-optkey"><option value="foulard" ${p?.opt_key==='foulard'?'selected':''}>Foulard</option><option value="couv" ${p?.opt_key==='couv'?'selected':''}>Couverture</option><option value="vc" ${p?.opt_key==='vc'?'selected':''}>Veste chauffante</option><option value="therm" ${p?.opt_key==='therm'?'selected':''}>Thermique</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Crédits</label><input type="number" class="form-input" id="pe-credits" value="${p?.credits||0}"></div><div class="form-group"><label class="form-label">Prix réel (€)</label><input type="number" step="0.01" class="form-input" id="pe-prix" value="${p?.prix||0}"></div></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="pe-desc">${p?.desc||''}</textarea></div>
+    <div class="form-group">
+      <label class="form-label">Photos du produit</label>
+      <div class="img-upload-zone" onclick="document.getElementById('pe-img-input').click()">
+        <input type="file" id="pe-img-input" accept="image/*" multiple onchange="handleImgs(event)">
+        <div style="font-size:26px;margin-bottom:5px">📸</div>
+        <div style="font-size:12px;color:var(--n500);font-weight:600">Cliquer pour ajouter des photos</div>
+        <div style="font-size:11px;color:var(--n400);margin-top:3px">JPEG, PNG · La 1ère photo sera la principale</div>
+      </div>
+      <div class="img-grid" id="pe-imgs-grid">${imgsH}</div>
+    </div>
+    <div class="form-group"><label class="form-label" style="margin-bottom:7px">Stock par taille</label><div id="pe-stock-rows">${stockRows}</div><button type="button" class="btn btn-xs btn-ghost" style="margin-top:5px" onclick="addStockRow()">+ Ajouter une taille</button></div>
+    <div class="form-group"><label class="form-label">Visible</label><select class="form-input sel-input" id="pe-vis"><option value="true" ${p?.visible!==false?'selected':''}>Oui</option><option value="false" ${p?.visible===false?'selected':''}>Non</option></select></div>`;
+  window._tImgs=p?.imgs?[...p.imgs]:[];
+  openModal('prod-edit-modal');
+}
+function typeChg(){document.getElementById('pe-optkey-wrap').style.display=document.getElementById('pe-type').value==='option_annuelle'?'block':'none';}
+function addStockRow(){const c=document.getElementById('pe-stock-rows');const d=document.createElement('div');d.style.cssText='display:flex;gap:7px;margin-bottom:6px;align-items:center';d.innerHTML=`<input type="text" class="form-input" style="width:78px;padding:7px 9px" placeholder="Taille" data-sz><input type="number" value="0" class="form-input" style="width:72px;padding:7px 9px" data-q><button type="button" class="btn btn-xs btn-danger" onclick="this.parentElement.remove()">✕</button>`;c.appendChild(d);}
+function handleImgs(e){Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>{window._tImgs.push(ev.target.result);renderImgGrid();};r.readAsDataURL(f);});e.target.value='';}
+function renderImgGrid(){const g=document.getElementById('pe-imgs-grid');if(!g)return;g.innerHTML=window._tImgs.map((img,i)=>`<div class="img-item"><img src="${img}" alt=""><button class="img-del" type="button" onclick="removeImgIdx(${i})">✕</button>${i===0?'<span class="img-primary-tag">Principale</span>':''}</div>`).join('');}
+function removeImgIdx(i){window._tImgs.splice(i,1);renderImgGrid();}
+function saveProduct(){
+  const nom=document.getElementById('pe-nom').value.trim();if(!nom){toast('Nom obligatoire.','e');return;}
+  const rows=document.querySelectorAll('#pe-stock-rows>div');const stock={};
+  rows.forEach(r=>{const sz=r.querySelector('[data-sz]').value.trim();const q=parseInt(r.querySelector('[data-q]').value)||0;if(sz)stock[sz]=q;});
+  const type=document.getElementById('pe-type').value;const imgs=window._tImgs||[];
+  if(LOCAL.editPid){
+    const p=pObj(LOCAL.editPid);
+    p.nom=nom;p.emoji=document.getElementById('pe-emoji').value;p.genre=document.getElementById('pe-genre').value;p.cat=document.getElementById('pe-cat').value;p.type=type;if(type==='option_annuelle')p.opt_key=document.getElementById('pe-optkey').value;p.credits=parseInt(document.getElementById('pe-credits').value)||0;p.prix=parseFloat(document.getElementById('pe-prix').value)||0;p.desc=document.getElementById('pe-desc').value;p.stock=stock;p.visible=document.getElementById('pe-vis').value==='true';p.imgs=imgs;
+    toast('✅ Produit mis à jour.');
+  }else{
+    const nid=Math.max(...LOCAL.products.map(x=>x.id))+1;
+    LOCAL.products.push({id:nid,nom,emoji:document.getElementById('pe-emoji').value,genre:document.getElementById('pe-genre').value,cat:document.getElementById('pe-cat').value,type,opt_key:type==='option_annuelle'?document.getElementById('pe-optkey').value:undefined,credits:parseInt(document.getElementById('pe-credits').value)||0,prix:parseFloat(document.getElementById('pe-prix').value)||0,desc:document.getElementById('pe-desc').value,stock,visible:document.getElementById('pe-vis').value==='true',imgs});
+    toast('✅ Produit créé.');
+  }
+  cm('prod-edit-modal');go('admin-products');
+}
+
+// ═══════════════════════════════════════════
+// ADMIN — SUPPLIERS
+// ═══════════════════════════════════════════
+function rAdminSuppliers(){
+  const sL={commandee:'<span class="badge bo">Commandée</span>',recue:'<span class="badge bg">Reçue</span>',annulee:'<span class="badge br">Annulée</span>'};
+  return`<div class="sh"><h3 style="font-size:15px;font-weight:800">Commandes fournisseurs</h3><button class="btn btn-primary btn-sm" onclick="openSupplier()">+ Nouvelle commande</button></div>
+  <div class="card"><div class="tbl-wrap"><table>
+    <thead><tr><th>N°</th><th>Fournisseur</th><th>Date</th><th>Articles</th><th>Montant</th><th>Réception prévue</th><th>Statut</th><th></th></tr></thead>
+    <tbody>${LOCAL.supplier_orders.map(o=>`<tr><td><strong>#${o.id}</strong><br><small style="font-size:10px;color:var(--n400)">${o.num}</small></td><td>${o.fournisseur}</td><td>${fmtDate(o.date)}</td><td style="font-size:12px">${o.articles.map(a=>`${pName(a.pid)} ${a.taille} ×${a.qty}`).join(', ')}</td><td>${o.total.toFixed(2)}€</td><td>${fmtDate(o.rec_prevue)}</td><td>${sL[o.statut]||o.statut}</td><td>${o.statut!=='recue'?`<button class="btn btn-xs btn-outline" onclick="receiveSupplier(${o.id})">✓ Réceptionner</button>`:'<span style="font-size:12px;color:var(--gd)">✓ Reçue</span>'}</td></tr>`).join('')}</tbody>
+  </table></div></div>`;
+}
+function receiveSupplier(id){const o=LOCAL.supplier_orders.find(x=>x.id===id);if(!o||o.statut==='recue')return;if(!confirm(`Confirmer la réception #${id} ? Les stocks seront mis à jour.`))return;o.statut='recue';o.rec_reelle=today();o.articles.forEach(a=>{const p=pObj(a.pid);if(p)p.stock[a.taille]=(p.stock[a.taille]||0)+a.qty;});toast(`✅ Commande #${id} réceptionnée. Stocks mis à jour.`);go('admin-suppliers');}
+function openSupplier(){
+  document.getElementById('supm-title').textContent='Nouvelle commande fournisseur';
+  document.getElementById('supm-body').innerHTML=`
+    <div class="form-row"><div class="form-group"><label class="form-label">Fournisseur</label><select class="form-input sel-input" id="su-four"><option>Armor Lux</option><option>EPI Center</option><option>Autre</option></select></div><div class="form-group"><label class="form-label">N° commande</label><input type="text" class="form-input" id="su-num"></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="su-date" value="${today()}"></div><div class="form-group"><label class="form-label">Réception prévue</label><input type="date" class="form-input" id="su-rec"></div></div>
+    <div class="form-group"><label class="form-label">Article</label><select class="form-input sel-input" id="su-prod">${LOCAL.products.map(p=>`<option value="${p.id}">${p.emoji} ${p.nom}</option>`).join('')}</select></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Taille</label><input type="text" class="form-input" id="su-sz" placeholder="ex: L, 42"></div><div class="form-group"><label class="form-label">Quantité</label><input type="number" class="form-input" id="su-qty" value="1" min="1"></div></div>
+    <div class="form-group"><label class="form-label">Prix unitaire (€)</label><input type="number" step="0.01" class="form-input" id="su-prix"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="su-notes"></textarea></div>`;
+  openModal('sup-modal');
+}
+function saveSupplier(){const pid=parseInt(document.getElementById('su-prod').value);const qty=parseInt(document.getElementById('su-qty').value)||1;const prix=parseFloat(document.getElementById('su-prix').value)||0;LOCAL.supplier_orders.push({id:LOCAL._sid++,fournisseur:document.getElementById('su-four').value,date:document.getElementById('su-date').value,num:document.getElementById('su-num').value,articles:[{pid,taille:document.getElementById('su-sz').value,qty,prix}],total:qty*prix,rec_prevue:document.getElementById('su-rec').value,rec_reelle:null,statut:'commandee',notes:document.getElementById('su-notes').value});cm('sup-modal');toast('✅ Commande fournisseur enregistrée.');go('admin-suppliers');}
+
+// ═══════════════════════════════════════════
+// ADMIN — FINANCE + EXCEL
+// ═══════════════════════════════════════════
+function rAdminFinance(){
+  const remOrd=LOCAL.orders.filter(o=>o.statut==='remise');
+  const totalAll=remOrd.reduce((s,o)=>s+o.cout,0);
+  const totalArts=remOrd.reduce((s,o)=>s+o.articles.length,0);
+  let tV=0,tC=0,tO=0;
+  remOrd.forEach(o=>o.articles.forEach(a=>{const p=pObj(a.pid);if(!p)return;if(p.type==='classique')tV+=p.prix;else if(p.type==='chaussures')tC+=p.prix;else if(p.type==='option_annuelle')tO+=p.prix;}));
+  const byCollab=LOCAL.users.map(u=>{const uo=remOrd.filter(o=>o.uid===u.id);return{...u,cost:uo.reduce((s,o)=>s+o.cout,0),arts:uo.reduce((s,o)=>s+o.articles.length,0),cnt:uo.length};}).sort((a,b)=>b.cost-a.cost);
+  const byProd=LOCAL.products.map(p=>{let qty=0;remOrd.forEach(o=>o.articles.forEach(a=>{if(a.pid===p.id)qty++;}));return{...p,qty,totalCost:qty*p.prix};}).filter(p=>p.qty>0).sort((a,b)=>b.qty-a.qty);
+  return`
+  <div class="sh"><h3 style="font-size:15px;font-weight:800">Bilan financier — ${new Date().getFullYear()}</h3><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="exportExcel()">📊 Export Excel</button><button class="btn btn-ghost btn-sm" onclick="exportCSV()">📄 CSV</button></div></div>
+  <div class="stats-grid">
+    <div class="stat g"><div class="stat-label">Coût total distribué</div><div class="stat-val">${totalAll.toFixed(2)}€</div><div class="stat-sub">commandes remises</div></div>
+    <div class="stat b"><div class="stat-label">Vêtements classiques</div><div class="stat-val">${tV.toFixed(2)}€</div></div>
+    <div class="stat y"><div class="stat-label">Chaussures</div><div class="stat-val">${tC.toFixed(2)}€</div></div>
+    <div class="stat o"><div class="stat-label">Options annuelles</div><div class="stat-val">${tO.toFixed(2)}€</div></div>
+    <div class="stat b"><div class="stat-label">Articles distribués</div><div class="stat-val">${totalArts}</div></div>
+    <div class="stat g"><div class="stat-label">Commandes remises</div><div class="stat-val">${remOrd.length}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card"><div class="card-head"><span class="card-title">👥 Coût par collaborateur</span></div><div class="tbl-wrap"><table><thead><tr><th>Collaborateur</th><th>Cmds</th><th>Articles</th><th>Coût</th></tr></thead><tbody>${byCollab.map(c=>`<tr><td><strong>${c.prenom} ${c.nom}</strong></td><td>${c.cnt}</td><td>${c.arts}</td><td><strong>${c.cost.toFixed(2)}€</strong></td></tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><div class="card-head"><span class="card-title">👕 Articles les plus commandés</span></div><div class="tbl-wrap"><table><thead><tr><th>Article</th><th>Qté</th><th>Coût</th></tr></thead><tbody>${byProd.slice(0,10).map(p=>`<tr><td>${p.emoji} ${p.nom}</td><td><strong>${p.qty}</strong></td><td>${p.totalCost.toFixed(2)}€</td></tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+}
+
+function exportExcel(){
+  if(typeof XLSX==='undefined'){toast('Bibliothèque Excel non chargée.','e');return;}
+  const wb=XLSX.utils.book_new();
+  const remOrd=LOCAL.orders.filter(o=>o.statut==='remise');
+  const totalAll=remOrd.reduce((s,o)=>s+o.cout,0);
+  let tV=0,tC=0,tO=0;
+  remOrd.forEach(o=>o.articles.forEach(a=>{const p=pObj(a.pid);if(!p)return;if(p.type==='classique')tV+=p.prix;else if(p.type==='chaussures')tC+=p.prix;else if(p.type==='option_annuelle')tO+=p.prix;}));
+  // Résumé
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['BILAN DRESSING PRO — LEROY MERLIN BEAUVAIS'],['Année',new Date().getFullYear()],['Généré le',new Date().toLocaleDateString('fr-FR')],[''],['Coût total distribué',totalAll.toFixed(2)+'€'],['Dont vêtements classiques',tV.toFixed(2)+'€'],['Dont chaussures',tC.toFixed(2)+'€'],['Dont options annuelles',tO.toFixed(2)+'€'],['Articles distribués',remOrd.reduce((s,o)=>s+o.articles.length,0)],['Commandes remises',remOrd.length]]),'Résumé');
+  // Commandes
+  const ordD=[['N°','Collaborateur','Email','Date','Articles','Tailles','Crédits','Coût (€)','Statut','Commentaire RH']];
+  LOCAL.orders.forEach(o=>{const u=uObj(o.uid);ordD.push([o.id,`${u?.prenom} ${u?.nom}`,u?.email||'',fmtDate(o.date),o.articles.map(a=>pName(a.pid)).join(' | '),o.articles.map(a=>a.taille).join(' | '),o.total,o.cout.toFixed(2),stLabel(o.statut),o.comment]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ordD),'Commandes');
+  // Par collaborateur
+  const colD=[['Collaborateur','Email','Cmds','Articles','Coût (€)','Crédits vêt. restants','Crédits chu. restants','Droits cl. restants','Chaussures utilisées']];
+  LOCAL.users.forEach(u=>{const uo=remOrd.filter(o=>o.uid===u.id);colD.push([`${u.prenom} ${u.nom}`,u.email,uo.length,uo.reduce((s,o)=>s+o.articles.length,0),uo.reduce((s,o)=>s+o.cout,0).toFixed(2),u.credits.vet,u.credits.chu,u.droits.cl_rest,u.droits.chu_used?'Oui':'Non']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(colD),'Par collaborateur');
+  // Articles commandés
+  const pD=[['Article','Catégorie','Type','Genre','Quantité','Prix unitaire (€)','Coût total (€)']];
+  LOCAL.products.forEach(p=>{let qty=0;remOrd.forEach(o=>o.articles.forEach(a=>{if(a.pid===p.id)qty++;}));if(qty>0)pD.push([p.nom,p.cat,p.type,p.genre,qty,p.prix.toFixed(2),(qty*p.prix).toFixed(2)]);});
+  pD.sort((a,b)=>b[4]-a[4]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pD),'Articles commandés');
+  // Stocks
+  const stD=[['Article','Catégorie','Genre','Taille','Stock','Statut']];
+  LOCAL.products.forEach(p=>Object.entries(p.stock).forEach(([sz,q])=>stD.push([p.nom,p.cat,p.genre,sz,q,q===0?'Rupture':q<=3?'Faible':'OK'])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stD),'Stocks');
+  // Fournisseurs
+  const supD=[['N°','Fournisseur','Date','Article','Taille','Quantité','Prix unit. (€)','Total (€)','Réception prévue','Réception réelle','Statut']];
+  LOCAL.supplier_orders.forEach(o=>o.articles.forEach(a=>supD.push([o.num,o.fournisseur,fmtDate(o.date),pName(a.pid),a.taille,a.qty,a.prix.toFixed(2),o.total.toFixed(2),fmtDate(o.rec_prevue),fmtDate(o.rec_reelle),o.statut])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(supD),'Fournisseurs');
+  XLSX.writeFile(wb,`Dressing_LM_Beauvais_${new Date().getFullYear()}.xlsx`);
+  toast('✅ Export Excel généré !');
+}
+function exportCSV(){const rows=[['N°','Collaborateur','Date','Articles','Crédits','Coût','Statut']];LOCAL.orders.forEach(o=>{const u=uObj(o.uid);rows.push([o.id,`${u?.prenom} ${u?.nom}`,fmtDate(o.date),o.articles.map(a=>pName(a.pid)).join(' | '),o.total,o.cout.toFixed(2),stLabel(o.statut)]);});const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Dressing_LM_Beauvais_${new Date().getFullYear()}.csv`;a.click();toast('✅ Export CSV généré.');}
+
+// ═══════════════════════════════════════════
+// ADMIN — SETTINGS
+// ═══════════════════════════════════════════
+function rAdminSettings(){
+  const admSlots=LOCAL.admins.map((a,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:${a.actif?'var(--gl)':'var(--n50)'};border-radius:var(--r8);border:1px solid ${a.actif?'var(--gm)':'var(--n200)'};margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;background:${a.actif?'var(--g)':'var(--n300)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white">${a.actif?(a.prenom[0]+a.nom[0]).toUpperCase():'?'}</div>
+        <div>${a.actif?`<div style="font-size:13px;font-weight:700">${a.prenom} ${a.nom}</div><div style="font-size:11px;color:var(--n500);font-family:'JetBrains Mono',monospace">${a.email}</div>`:`<div style="font-size:13px;color:var(--n400)">Slot ${i+1} — Non configuré</div>`}</div>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="openAdminEdit('${a.id}')">${a.actif?'Modifier':'Configurer'}</button>
+    </div>`).join('');
+  return`<div style="display:grid;gap:16px;max-width:580px">
+    <div class="card"><div class="card-head"><span class="card-title">🔑 Administrateurs RH (3 slots)</span></div><div class="card-body">${admSlots}</div></div>
+    <div class="card"><div class="card-head"><span class="card-title">⚙️ Règles de dotation</span></div><div class="card-body">
+      <div class="form-row"><div class="form-group"><label class="form-label">Articles classiques / an</label><input type="number" class="form-input" id="s-cl" value="${LOCAL.settings.droits_cl}"></div><div class="form-group"><label class="form-label">Crédits vêtements / an</label><input type="number" class="form-input" id="s-cvet" value="${LOCAL.settings.credits_vet}"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Crédits chaussures / an</label><input type="number" class="form-input" id="s-cchu" value="${LOCAL.settings.credits_chu}"></div></div>
+      <div class="sep"></div>
+      <div class="form-group"><label class="form-label">Mode options annuelles</label><select class="form-input sel-input" id="s-optmode"><option value="per_item" ${LOCAL.settings.opt_mode==='per_item'?'selected':''}>Par article (1 foulard/an, 1 veste chauffante/an...)</option><option value="global" ${LOCAL.settings.opt_mode==='global'?'selected':''}>Global (1 option par an toutes catégories)</option></select></div>
+      <button class="btn btn-primary btn-sm" onclick="saveSettings()">Enregistrer</button>
+    </div></div>
+    <div class="card"><div class="card-head"><span class="card-title">🔥 Synchronisation temps réel</span></div><div class="card-body">
+      ${window._fbReady?'<div class="alert alert-s">✅ Firebase connecté — Les données se synchronisent en temps réel sur tous les appareils.</div>':'<div class="alert alert-w">⚠️ Firebase non configuré — Les données sont locales au navigateur et ne se synchronisent pas entre appareils.<br><br><strong>Pour activer la synchronisation :</strong></div>'}
+      ${!window._fbReady?`<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="showFbGuide()">🚀 Guide de configuration Firebase</button>`:''}
+    </div></div>
+  </div>`;
+}
+function openAdminEdit(aid){
+  LOCAL.editAdmid=aid;const a=LOCAL.admins.find(x=>x.id===aid);
+  document.getElementById('adm-title').textContent=a.actif?`Modifier : ${a.prenom} ${a.nom}`:'Configurer un administrateur';
+  document.getElementById('adm-body').innerHTML=`
+    <div class="form-row"><div class="form-group"><label class="form-label">Prénom</label><input type="text" class="form-input" id="adm-pre" value="${a.prenom}"></div><div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="adm-nom" value="${a.nom}"></div></div>
+    <div class="form-group"><label class="form-label">Email (@leroymerlin.fr)</label><input type="email" class="form-input" id="adm-email" value="${a.email}"></div>
+    <div class="form-group"><label class="form-label">Mot de passe ${a.actif?'(vide = inchangé)':''}</label><input type="password" class="form-input" id="adm-pwd" placeholder="${a.actif?'Laisser vide pour conserver':'Définir un mot de passe'}"></div>
+    <div class="form-group"><label class="form-label">Statut</label><select class="form-input sel-input" id="adm-actif"><option value="true" ${a.actif?'selected':''}>Actif</option><option value="false" ${!a.actif?'selected':''}>Inactif</option></select></div>`;
+  openModal('adm-modal');
+}
+function saveAdmin(){
+  const a=LOCAL.admins.find(x=>x.id===LOCAL.editAdmid);
+  const pre=document.getElementById('adm-pre').value.trim();const nom=document.getElementById('adm-nom').value.trim();const email=document.getElementById('adm-email').value.trim().toLowerCase();const pwd=document.getElementById('adm-pwd').value;const actif=document.getElementById('adm-actif').value==='true';
+  if(actif&&(!pre||!nom||!email)){toast('Champs obligatoires.','e');return;}
+  a.prenom=pre;a.nom=nom;a.email=email;if(pwd)a.pwd=pwd;a.actif=actif;
+  if(!actif){a.email='';a.pwd='';a.prenom='';a.nom='';}
+  cm('adm-modal');toast('✅ Administrateur mis à jour.');go('admin-settings');
+}
+function saveSettings(){LOCAL.settings.droits_cl=parseInt(document.getElementById('s-cl').value)||5;LOCAL.settings.credits_vet=parseInt(document.getElementById('s-cvet').value)||500;LOCAL.settings.credits_chu=parseInt(document.getElementById('s-cchu').value)||100;LOCAL.settings.opt_mode=document.getElementById('s-optmode').value;toast('✅ Paramètres sauvegardés.');}
+
+// ═══════════════════════════════════════════
+// FIREBASE GUIDE
+// ═══════════════════════════════════════════
+function showFbGuide(){
+  document.getElementById('fb-guide-body').innerHTML=`
+    <div class="alert alert-i" style="margin-bottom:16px">Ce guide vous explique comment activer la synchronisation en temps réel entre tous les appareils (téléphones, ordinateurs, tablettes).</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${[
+        ['1','Créer un compte Google','Allez sur <a href="https://console.firebase.google.com" target="_blank" style="color:var(--g);font-weight:700">console.firebase.google.com</a> et connectez-vous avec un compte Google.'],
+        ['2','Créer un projet','Cliquez sur "Ajouter un projet", nommez-le <strong>dressing-lm-beauvais</strong>, désactivez Analytics, puis créez.'],
+        ['3','Ajouter une app Web','Dans la page du projet, cliquez sur l\'icône </> (Web). Nommez-la "Dressing Pro", cliquez Enregistrer. Copiez le bloc <strong>firebaseConfig</strong>.'],
+        ['4','Activer Realtime Database','Dans le menu gauche → Build → Realtime Database → Créer une base de données → Choisir la région Europe → Mode test (30 jours).'],
+        ['5','Modifier le fichier HTML','Ouvrez le fichier HTML avec un éditeur de texte (Bloc-notes sur Windows). Cherchez <strong>VOTRE_API_KEY</strong> et remplacez tous les champs VOTRE_... par les valeurs copiées à l\'étape 3.'],
+        ['6','Re-déposer sur Netlify','Allez sur votre site Netlify → Site settings → Deploys → Drag & Drop your new file. Votre URL reste la même !'],
+      ].map(([n,t,d])=>`<div style="display:flex;gap:12px;align-items:flex-start"><div style="width:26px;height:26px;background:var(--g);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${n}</div><div><div style="font-size:13px;font-weight:700;margin-bottom:3px">${t}</div><div style="font-size:13px;color:var(--n500);line-height:1.5">${d}</div></div></div>`).join('')}
+    </div>
+    <div class="alert alert-s" style="margin-top:16px">✅ Une fois configuré, toutes les commandes, stocks et données seront synchronisées en temps réel sur tous les appareils de tous vos collaborateurs.</div>`;
+  openModal('fb-guide-modal');
+}
+
+// ═══════════════════════════════════════════
+// FIREBASE STATUS ON LOGIN PAGE
+// ═══════════════════════════════════════════
+function updateFbStatus(){
+  const box=document.getElementById('fb-status-box');
+  if(!box)return;
+  if(window._fbReady){
+    box.className='fb-status ok';
+    box.textContent='🟢 Base de données connectée — Synchronisation temps réel active';
+  }else{
+    box.className='fb-status local';
+    box.innerHTML='🟡 Mode local (démo) — <a href="#" onclick="showFbGuide();return false" style="color:inherit;font-weight:700">Configurer Firebase pour activer la synchronisation →</a>';
+  }
+}
+
+// ═══════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('active');}));
+document.getElementById('login-pwd').addEventListener('keypress',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('login-email').addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('login-pwd').focus();});
+document.getElementById('first-email').addEventListener('keypress',e=>{if(e.key==='Enter')checkFirstEmail();});
+document.getElementById('first-pwd2')?.addEventListener('keypress',e=>{if(e.key==='Enter')saveFirstPwd();});
+
+// Wait for firebase module to load
+document.addEventListener('fbloaded',()=>{
+  updateFbStatus();
+});
+// If firebase takes too long, show local status after 2s
+setTimeout(()=>{
+  if(!window._fbLoaded){
+    window._fbReady=false;
+    updateFbStatus();
+  }
+},2000);
+// Immediate update if already loaded
+if(window._fbLoaded)updateFbStatus();
+</script>
+</body>
+</html>
