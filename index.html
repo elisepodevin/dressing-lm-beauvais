@@ -1126,7 +1126,7 @@ async function saveProduct() {
       genre: document.getElementById('pe-genre').value,
       cat: document.getElementById('pe-cat').value,
       type,
-      opt_key: type === 'option_annuelle' ? document.getElementById('pe-optkey').value : undefined,
+      opt_key: type === 'option_annuelle' ? document.getElementById('pe-optkey').value : null,
       credits: parseInt(document.getElementById('pe-credits').value) || 0,
       prix: parseFloat(document.getElementById('pe-prix').value) || 0,
       desc: document.getElementById('pe-desc').value,
