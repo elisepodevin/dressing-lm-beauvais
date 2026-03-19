@@ -1222,5 +1222,27 @@ setTimeout(()=>{
 // Immediate update if already loaded
 if(window._fbLoaded)updateFbStatus();
 </script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyA9p_HuAqTeLPD4jymWDhy_enyQ3qynSio",
+  authDomain: "dressing-lm-beauvais.firebaseapp.com",
+  databaseURL: "https://dressing-lm-beauvais-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "dressing-lm-beauvais",
+  storageBucket: "dressing-lm-beauvais.appspot.com",
+  messagingSenderId: "2578536589",
+  appId: "1:2578536589:web:3197e03d57323fdd47aac4"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+// TEST
+db.ref("test").set("ça fonctionne !");
+</script>
 </body>
 </html>
