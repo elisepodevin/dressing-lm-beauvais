@@ -6,6 +6,7 @@
 <title>Dressing Pro — Leroy Merlin Beauvais</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <!-- ══ FIREBASE v9 COMPAT ══ -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -396,6 +397,8 @@ tbody tr:last-child td{border-bottom:none}
         <span class="topbar-title" id="topbar-title">Tableau de bord</span>
       </div>
       <div class="topbar-right">
+        <button id="notif-btn" class="btn btn-ghost btn-sm" onclick="openNotifPanel()" style="display:none;position:relative" title="Notifications email">📧 <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--o);color:white;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center">0</span></button>
+        <button id="global-save-btn" class="btn btn-primary btn-sm" onclick="saveAllToFirebase()" style="display:none" title="Sauvegarder tout dans Firebase">💾 Enregistrer tout</button>
         <div id="cart-wrap" style="display:none">
           <button class="btn btn-outline btn-sm" style="position:relative" onclick="openCart()">
             🛒 Panier<span class="cart-count" id="cart-count" style="display:none">0</span>
@@ -417,6 +420,8 @@ tbody tr:last-child td{border-bottom:none}
 <div class="modal-overlay" id="sup-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="supm-title">Commande fournisseur</span><button class="modal-x" onclick="cm('sup-modal')">✕</button></div><div class="modal-body" id="supm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('sup-modal')">Annuler</button><button class="btn btn-primary" onclick="saveSupplier()">Enregistrer</button></div></div></div>
 <div class="modal-overlay" id="adm-modal"><div class="modal"><div class="modal-head"><span class="modal-title" id="adm-title">Administrateur</span><button class="modal-x" onclick="cm('adm-modal')">✕</button></div><div class="modal-body" id="adm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('adm-modal')">Annuler</button><button class="btn btn-primary" onclick="saveAdmin()">Enregistrer</button></div></div></div>
 <div class="modal-overlay" id="collab-detail-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title" id="cdm-title">Fiche collaborateur</span><button class="modal-x" onclick="cm('collab-detail-modal')">✕</button></div><div class="modal-body" id="cdm-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('collab-detail-modal')">Fermer</button></div></div></div>
+
+<div class="modal-overlay" id="notif-modal"><div class="modal modal-xl"><div class="modal-head"><span class="modal-title">📧 Journal des notifications</span><button class="modal-x" onclick="cm('notif-modal')">✕</button></div><div class="modal-body" id="notif-body"></div><div class="modal-foot"><button class="btn btn-ghost" onclick="cm('notif-modal')">Fermer</button></div></div></div>
 
 <div class="toast-wrap" id="toasts"></div>
 
@@ -459,6 +464,13 @@ const LOCAL = {
     {id:15,nom:'Gilet Haute Visibilité',genre:'Mixte',cat:'Sécurité',type:'classique',credits:20,prix:8.50,emoji:'🦺',imgs:[],visible:true,desc:'Gilet HV classe 2.',stock:{'S/M':10,'L/XL':12,'XXL':5}},
     {id:16,nom:'Sweat Logistique',genre:'Mixte',cat:'Logistique',type:'classique',credits:95,prix:32.00,emoji:'🟢',imgs:[],visible:true,desc:'Sweat ML logistique.',stock:{S:4,M:6,L:5,XL:3,XXL:1}},
     {id:17,nom:'Semelles Confort',genre:'Mixte',cat:'Chaussures',type:'chaussures',credits:0,prix:12.00,emoji:'🦶',imgs:[],visible:true,desc:'Semelles ergonomiques.',stock:{'36-38':5,'39-41':8,'42-44':6,'45-46':3}},
+    {id:18,nom:'Chemise Homme MC',genre:'Homme',cat:'Chemises',type:'classique',credits:85,prix:25.00,emoji:'👔',imgs:[],visible:true,desc:'Chemise manches courtes coton.',stock:{S:4,M:6,L:5,XL:3,XXL:2}},
+    {id:19,nom:'Chemise Homme ML',genre:'Homme',cat:'Chemises',type:'classique',credits:95,prix:30.00,emoji:'👔',imgs:[],visible:true,desc:'Chemise manches longues coton.',stock:{S:3,M:5,L:4,XL:3,XXL:1}},
+    {id:20,nom:'Chemise Femme MC',genre:'Femme',cat:'Chemises',type:'classique',credits:85,prix:25.00,emoji:'👚',imgs:[],visible:true,desc:'Chemise manches courtes coupe femme.',stock:{XS:3,S:5,M:4,L:3,XL:1}},
+    {id:21,nom:'Chemise Femme ML',genre:'Femme',cat:'Chemises',type:'classique',credits:95,prix:30.00,emoji:'👚',imgs:[],visible:true,desc:'Chemise manches longues coupe femme.',stock:{XS:2,S:4,M:5,L:3,XL:1}},
+    {id:22,nom:'Softshell Homme',genre:'Homme',cat:'Softshells',type:'classique',credits:130,prix:55.00,emoji:'🧥',imgs:[],visible:true,desc:'Veste softshell coupe-vent et déperlante.',stock:{S:3,M:5,L:4,XL:3,XXL:2}},
+    {id:23,nom:'Softshell Femme',genre:'Femme',cat:'Softshells',type:'classique',credits:130,prix:55.00,emoji:'🧥',imgs:[],visible:true,desc:'Veste softshell coupe femme, coupe-vent.',stock:{XS:2,S:4,M:5,L:3,XL:1}},
+    {id:24,nom:'Softshell Mixte Logistique',genre:'Mixte',cat:'Softshells',type:'classique',credits:140,prix:60.00,emoji:'🧥',imgs:[],visible:true,desc:'Softshell renforcée logistique.',stock:{S:2,M:4,L:3,XL:3,XXL:1}},
   ],
 
   orders: [
@@ -700,10 +712,14 @@ function initApp(){
     buildAdminNav();
     document.getElementById('cart-wrap').style.display='none';
     document.getElementById('tb-cred').style.display='none';
+    document.getElementById('global-save-btn').style.display='inline-flex';
+    document.getElementById('notif-btn').style.display='inline-flex';
     go('admin-dashboard');
   } else {
     buildCollabNav();
     document.getElementById('cart-wrap').style.display='block';
+    document.getElementById('global-save-btn').style.display='none';
+    document.getElementById('notif-btn').style.display='inline-flex';
     updateCred();
     go('dashboard');
   }
@@ -835,10 +851,12 @@ function validateCart(){
   saveOrderToFirebase(newO);
   u.credits.vet-=tV;u.credits.chu-=tC;u.droits.cl_rest-=clN;
   if(hasChu)u.droits.chu_used=true;
-  LOCAL.cart.forEach(c=>{if(c.type==='option_annuelle')u.opts[c.opt_key]=true;const p=pObj(c.pid);if(p)p.stock[c.sz]=Math.max(0,(p.stock[c.sz]||0)-1);});
+  LOCAL.cart.forEach(c=>{if(c.type==='option_annuelle')u.opts[c.opt_key]=true;const p=pObj(c.pid);if(p){p.stock[c.sz]=Math.max(0,(p.stock[c.sz]||0)-1);saveProdToFirebase(p);}});
   saveUserToFirebase(u);
+  // ── Notification email aux admins
+  sendEmailNotif('new_order', newO, u);
   LOCAL.cart=[];updateCartBadge();updateCred();cm('cart-modal');
-  toast(`🎉 Commande #${newO.id} validée !`);go('my-orders');
+  toast(`🎉 Commande #${newO.id} validée ! Stocks mis à jour.`);go('my-orders');
 }
 
 // ─── MY ORDERS
@@ -902,10 +920,16 @@ function openOrdEdit(id){
 }
 function saveOrder(){
   const o=LOCAL.orders.find(x=>x.id===LOCAL.editOid);if(!o)return;
+  const oldStatut=o.statut;
   o.statut=document.getElementById('oe-st').value;
   o.comment=document.getElementById('oe-cm').value;
   o.cout=parseFloat(document.getElementById('oe-cost').value)||o.cout;
   saveOrderToFirebase(o);
+  // ── Notification collaborateur si commande passe en "prête"
+  if(oldStatut!=='prete'&&o.statut==='prete'){
+    const u=uObj(o.uid);
+    if(u)sendEmailNotif('order_ready', o, u);
+  }
   cm('order-modal');toast(`✅ Commande #${o.id} mise à jour.`);go('admin-orders');
 }
 
@@ -1166,6 +1190,16 @@ function rAdminSettings(){
         : '<div class="alert alert-e">❌ Firebase non disponible. Vérifiez votre connexion internet ou les règles de sécurité Firebase.</div>'}
       <div style="margin-top:9px;font-size:12px;color:var(--n500)">Projet : <strong>dressing-lm-beauvais</strong><br>Stockage photos : Realtime Database (base64 compressé)<br>Plan : <strong>Spark gratuit</strong> ✅</div>
     </div></div>
+    <div class="card"><div class="card-head"><span class="card-title">📧 Notifications Email (EmailJS)</span></div><div class="card-body">
+      <div class="alert alert-i">ℹ️ <div>Pour recevoir de vrais emails, créez un compte gratuit sur <a href="https://www.emailjs.com" target="_blank" style="color:#2563eb;font-weight:700">emailjs.com</a>, créez un Service + un Template, puis renseignez les IDs ci-dessous.<br><br><strong>Variables du template :</strong> {{to_email}}, {{subject}}, {{message}}</div></div>
+      <div class="form-group"><label class="form-label">Service ID</label><input type="text" class="form-input" id="ejs-service" value="${localStorage.getItem('emailjs_service')||''}" placeholder="ex: service_abc123"></div>
+      <div class="form-group"><label class="form-label">Template ID</label><input type="text" class="form-input" id="ejs-template" value="${localStorage.getItem('emailjs_template')||''}" placeholder="ex: template_xyz789"></div>
+      <div class="form-group"><label class="form-label">Clé publique (Public Key)</label><input type="text" class="form-input" id="ejs-key" value="${localStorage.getItem('emailjs_key')||''}" placeholder="ex: user_ABCdef123"></div>
+      <div class="sep"></div>
+      <button class="btn btn-primary btn-sm" onclick="saveEmailJS()">💾 Sauvegarder la config email</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="testEmailJS()">🧪 Envoyer un email test</button>
+      <div id="ejs-status" style="margin-top:8px;font-size:12px"></div>
+    </div></div>
   </div>`;
 }
 function openAdminEdit(aid){
@@ -1175,6 +1209,27 @@ function openAdminEdit(aid){
   openModal('adm-modal');
 }
 function saveAdmin(){const a=LOCAL.admins.find(x=>x.id===LOCAL.editAdmid);const pre=document.getElementById('adm-pre').value.trim();const nom=document.getElementById('adm-nom').value.trim();const email=document.getElementById('adm-email').value.trim().toLowerCase();const pwd=document.getElementById('adm-pwd').value;const actif=document.getElementById('adm-actif').value==='true';if(actif&&(!pre||!nom||!email)){toast('Champs obligatoires.','e');return;}a.prenom=pre;a.nom=nom;a.email=email;if(pwd)a.pwd=pwd;a.actif=actif;if(!actif){a.email='';a.pwd='';a.prenom='';a.nom='';}cm('adm-modal');toast('✅ Administrateur mis à jour.');go('admin-settings');}
+function saveEmailJS(){
+  localStorage.setItem('emailjs_service', document.getElementById('ejs-service').value.trim());
+  localStorage.setItem('emailjs_template', document.getElementById('ejs-template').value.trim());
+  localStorage.setItem('emailjs_key', document.getElementById('ejs-key').value.trim());
+  const s=document.getElementById('ejs-status');
+  s.innerHTML='<span style="color:var(--gd);font-weight:700">✅ Configuration EmailJS sauvegardée !</span>';
+  toast('✅ Configuration email sauvegardée.');
+}
+function testEmailJS(){
+  const service=document.getElementById('ejs-service').value.trim();
+  const template=document.getElementById('ejs-template').value.trim();
+  const key=document.getElementById('ejs-key').value.trim();
+  const s=document.getElementById('ejs-status');
+  if(!service||!template||!key){s.innerHTML='<span style="color:var(--r);font-weight:700">❌ Remplissez les 3 champs d\'abord.</span>';return;}
+  s.innerHTML='<span style="color:var(--o);font-weight:700">⏳ Envoi en cours...</span>';
+  try{
+    emailjs.send(service,template,{to_email:LOCAL.cu.email,subject:'[Dressing Pro] Test de notification',message:'Ceci est un email test depuis Dressing Pro.\nSi vous recevez cet email, la configuration est correcte ! ✅'},key)
+      .then(()=>{s.innerHTML='<span style="color:var(--gd);font-weight:700">✅ Email test envoyé ! Vérifiez votre boîte mail.</span>';toast('✅ Email test envoyé !');})
+      .catch(e=>{s.innerHTML=`<span style="color:var(--r);font-weight:700">❌ Erreur : ${e.text||e}</span>`;});
+  }catch(e){s.innerHTML=`<span style="color:var(--r);font-weight:700">❌ EmailJS non disponible.</span>`;}
+}
 function saveSettings(){LOCAL.settings.droits_cl=parseInt(document.getElementById('s-cl').value)||5;LOCAL.settings.credits_vet=parseInt(document.getElementById('s-cvet').value)||500;LOCAL.settings.credits_chu=parseInt(document.getElementById('s-cchu').value)||100;if(FB_READY)DB_LIVE.ref('settings').set(LOCAL.settings);toast('✅ Paramètres sauvegardés.');}
 
 // ═══════════════════════════════════════════
@@ -1190,6 +1245,128 @@ function updateFbStatus(){
     box.className='fb-status local';
     box.textContent='🟡 Mode local (démo) — Firebase non connecté';
   }
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICATIONS EMAIL
+// ═══════════════════════════════════════════
+let EMAIL_LOG = [];
+
+// ── Envoi de notification (EmailJS ou log local)
+function sendEmailNotif(type, order, user) {
+  const admEmails = LOCAL.admins.filter(a => a.actif && a.email).map(a => a.email);
+  const now = new Date().toLocaleString('fr-FR');
+  const articles = order.articles.map(a => `${pName(a.pid)} (${a.taille})`).join(', ');
+
+  if (type === 'new_order') {
+    // Notifier les admins
+    const msg = `📦 Nouvelle commande #${order.id}\nDe : ${user.prenom} ${user.nom} (${user.email})\nArticles : ${articles}\nTotal : ${order.total} crédits\nDate : ${now}`;
+    admEmails.forEach(email => {
+      EMAIL_LOG.push({type:'new_order', to:email, from:`${user.prenom} ${user.nom}`, msg, date:now});
+      // Tentative EmailJS
+      tryEmailJS({
+        to_email: email,
+        subject: `[Dressing Pro] Nouvelle commande #${order.id} de ${user.prenom} ${user.nom}`,
+        message: msg
+      });
+    });
+    toast(`📧 Notification envoyée aux administrateurs.`);
+    updateNotifBadge();
+    // Sauvegarder le log dans Firebase
+    if(FB_READY) DB_LIVE.ref('email_log').push({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now});
+  }
+
+  if (type === 'order_ready') {
+    // Notifier le collaborateur
+    const msg = `✅ Votre commande #${order.id} est prête !\nArticles : ${articles}\nVous pouvez la récupérer au bureau RH.\nDate : ${now}`;
+    EMAIL_LOG.push({type:'order_ready', to:user.email, from:'Dressing Pro', msg, date:now});
+    tryEmailJS({
+      to_email: user.email,
+      subject: `[Dressing Pro] Votre commande #${order.id} est prête !`,
+      message: msg
+    });
+    toast(`📧 Notification envoyée à ${user.prenom} ${user.nom}.`);
+    updateNotifBadge();
+    if(FB_READY) DB_LIVE.ref('email_log').push({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now});
+  }
+}
+
+// ── EmailJS (configurable par l'admin)
+function tryEmailJS(params) {
+  // Pour activer les vrais emails :
+  // 1. Créer un compte gratuit sur https://www.emailjs.com
+  // 2. Créer un Service (Gmail, Outlook...) et un Template
+  // 3. Remplacer les IDs ci-dessous
+  const SERVICE_ID = localStorage.getItem('emailjs_service') || '';
+  const TEMPLATE_ID = localStorage.getItem('emailjs_template') || '';
+  const PUBLIC_KEY = localStorage.getItem('emailjs_key') || '';
+
+  if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
+    console.log('📧 Email simulé (configurer EmailJS dans Paramètres) :', params);
+    return;
+  }
+
+  try {
+    emailjs.send(SERVICE_ID, TEMPLATE_ID, params, PUBLIC_KEY)
+      .then(() => console.log('✅ Email envoyé via EmailJS'))
+      .catch(e => console.warn('⚠️ Erreur EmailJS:', e));
+  } catch(e) {
+    console.warn('EmailJS non disponible:', e);
+  }
+}
+
+// ── Bouton Enregistrer Global (sauvegarde tout dans Firebase)
+function saveAllToFirebase() {
+  if (!FB_READY) { toast('Firebase non connecté.', 'e'); return; }
+  const saveBtn = document.getElementById('global-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '⏳ Sauvegarde...'; }
+
+  // Sauvegarder tous les produits
+  LOCAL.products.forEach(p => saveProdToFirebase(p));
+  // Sauvegarder tous les utilisateurs
+  LOCAL.users.forEach(u => saveUserToFirebase(u));
+  // Sauvegarder toutes les commandes
+  LOCAL.orders.forEach(o => saveOrderToFirebase(o));
+  // Sauvegarder les commandes fournisseurs
+  LOCAL.supplier_orders.forEach(s => { if(FB_READY) DB_LIVE.ref('supplier_orders/'+s.id).set(s); });
+  // Sauvegarder les settings
+  if(FB_READY) DB_LIVE.ref('settings').set(LOCAL.settings);
+  // Sauvegarder les admins
+  LOCAL.admins.forEach(a => { if(FB_READY) DB_LIVE.ref('admins/'+a.id).set(a); });
+
+  setTimeout(() => {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Enregistrer tout'; }
+    toast('💾 Tout a été sauvegardé dans Firebase !');
+  }, 1000);
+}
+
+// ── Panneau de notifications
+function openNotifPanel() {
+  const bd = document.getElementById('notif-body');
+  const isAdmin = LOCAL.cu && LOCAL.cu.role === 'admin';
+  const myEmail = LOCAL.cu ? LOCAL.cu.email : '';
+  const logs = isAdmin ? EMAIL_LOG : EMAIL_LOG.filter(e => e.to === myEmail || e.from === `${LOCAL.cu.prenom} ${LOCAL.cu.nom}`);
+
+  if (!logs.length) {
+    bd.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-h">Aucune notification</div><p style="font-size:13px;color:var(--n400)">Les notifications apparaîtront ici à chaque commande.</p></div>';
+  } else {
+    bd.innerHTML = [...logs].reverse().map(e => `
+      <div style="padding:12px;background:${e.type==='new_order'?'var(--ol)':'var(--gl)'};border-radius:var(--r8);margin-bottom:8px;border-left:3px solid ${e.type==='new_order'?'var(--o)':'var(--g)'}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:800;color:${e.type==='new_order'?'#c2410c':'var(--gd)'}">${e.type==='new_order'?'📦 Nouvelle commande':'✅ Commande prête'}</span>
+          <span style="font-size:11px;color:var(--n400)">${e.date}</span>
+        </div>
+        <div style="font-size:12px;color:var(--n600)">À : ${e.to}</div>
+        <div style="font-size:13px;color:var(--n800);margin-top:4px;white-space:pre-line;line-height:1.4">${e.msg}</div>
+      </div>
+    `).join('');
+  }
+  openModal('notif-modal');
+}
+
+function updateNotifBadge() {
+  const cnt = document.getElementById('notif-count');
+  if (cnt) { cnt.textContent = EMAIL_LOG.length; cnt.style.display = EMAIL_LOG.length > 0 ? 'flex' : 'none'; }
 }
 
 // ═══════════════════════════════════════════
