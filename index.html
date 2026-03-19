@@ -45,26 +45,32 @@ document.dispatchEvent(new Event('fbloaded'));
 
 // ── Compression image via Canvas → base64 léger (~100-200KB max)
 function compressImage(file, maxWidth = 800, quality = 0.75) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const compressed = canvas.toDataURL('image/jpeg', quality);
-        const sizeKB = Math.round(compressed.length * 0.75 / 1024);
-        console.log(`📸 Image compressée : ${sizeKB} KB`);
-        resolve(compressed);
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      reader.onerror = () => reject('FileReader error');
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = () => reject('Image load error');
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', quality);
+            const sizeKB = Math.round(compressed.length * 0.75 / 1024);
+            console.log(`📸 Image compressée : ${sizeKB} KB`);
+            resolve(compressed);
+          } catch(err) { reject(err); }
+        };
+        img.src = e.target.result;
       };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    } catch(err) { reject(err); }
   });
 }
 </script>
@@ -1069,78 +1075,87 @@ async function saveProduct() {
   saveBtn.disabled = true;
   saveBtn.textContent = '⏳ Sauvegarde...';
 
-  const rows = document.querySelectorAll('#pe-stock-rows>div');
-  const stock = {};
-  rows.forEach(r => {
-    const sz = r.querySelector('[data-sz]').value.trim();
-    const q = parseInt(r.querySelector('[data-q]').value) || 0;
-    if (sz) stock[sz] = q;
-  });
+  try {
+    const rows = document.querySelectorAll('#pe-stock-rows>div');
+    const stock = {};
+    rows.forEach(r => {
+      const szEl = r.querySelector('[data-sz]');
+      const qEl = r.querySelector('[data-q]');
+      if (szEl && qEl) {
+        const sz = szEl.value.trim();
+        const q = parseInt(qEl.value) || 0;
+        if (sz) stock[sz] = q;
+      }
+    });
 
-  const type = document.getElementById('pe-type').value;
-  const prodId = LOCAL.editPid || (Math.max(...LOCAL.products.map(x => x.id)) + 1);
+    const type = document.getElementById('pe-type').value;
+    const prodId = LOCAL.editPid || (Math.max(0, ...LOCAL.products.map(x => x.id)) + 1);
 
-  // Upload les nouvelles images vers Firebase Storage
-  const finalImgs = [];
-  const newFilesToUpload = window._tImgs.filter(img => typeof img !== 'string');
-  const existingUrls = window._tImgs.filter(img => typeof img === 'string');
-
-  if (newFilesToUpload.length > 0 && FB_READY) {
-    progressDiv.style.display = 'block';
-    progressDiv.textContent = `⏳ Upload de ${newFilesToUpload.length} photo(s) vers Firebase...`;
-  }
-
-  // Garder les URLs existantes
-  finalImgs.push(...existingUrls);
-
-  // Uploader les nouvelles
-  for (let i = 0; i < newFilesToUpload.length; i++) {
-    const imgObj = newFilesToUpload[i];
-    if (progressDiv) progressDiv.textContent = `⏳ Upload photo ${i+1}/${newFilesToUpload.length}...`;
-    try {
-      const url = await uploadImageToStorage(imgObj.file, prodId);
-      finalImgs.push(url);
-    } catch(e) {
-      console.error('Erreur upload:', e);
-      // Fallback : utiliser le preview local
-      finalImgs.push(imgObj.preview);
+    // Traitement des images
+    const finalImgs = [];
+    for (let i = 0; i < window._tImgs.length; i++) {
+      const img = window._tImgs[i];
+      if (typeof img === 'string') {
+        // URL ou base64 existante
+        finalImgs.push(img);
+      } else if (img && img.file) {
+        // Nouvelle image avec fichier → compresser
+        if (progressDiv) { progressDiv.style.display = 'block'; progressDiv.textContent = `⏳ Compression photo ${i+1}...`; }
+        try {
+          const compressed = await Promise.race([
+            compressImage(img.file, 800, 0.75),
+            new Promise((_, reject) => setTimeout(() => reject('timeout'), 8000))
+          ]);
+          finalImgs.push(compressed);
+        } catch(e) {
+          console.warn('Image compression failed, using preview:', e);
+          if (img.preview) finalImgs.push(img.preview);
+        }
+      } else if (img && img.preview) {
+        // Objet avec preview mais sans file
+        finalImgs.push(img.preview);
+      }
     }
+
+    if (progressDiv) progressDiv.style.display = 'none';
+
+    const prodData = {
+      id: prodId,
+      nom,
+      emoji: document.getElementById('pe-emoji').value,
+      genre: document.getElementById('pe-genre').value,
+      cat: document.getElementById('pe-cat').value,
+      type,
+      opt_key: type === 'option_annuelle' ? document.getElementById('pe-optkey').value : undefined,
+      credits: parseInt(document.getElementById('pe-credits').value) || 0,
+      prix: parseFloat(document.getElementById('pe-prix').value) || 0,
+      desc: document.getElementById('pe-desc').value,
+      stock,
+      visible: document.getElementById('pe-vis').value === 'true',
+      imgs: finalImgs
+    };
+
+    if (LOCAL.editPid) {
+      const idx = LOCAL.products.findIndex(x => x.id === LOCAL.editPid);
+      if (idx >= 0) LOCAL.products[idx] = prodData;
+      toast('✅ Produit mis à jour !');
+    } else {
+      LOCAL.products.push(prodData);
+      toast('✅ Produit créé !');
+    }
+
+    // Sauvegarder dans Firebase
+    saveProdToFirebase(prodData);
+
+    cm('prod-edit-modal');
+    go('admin-products');
+  } catch(err) {
+    console.error('Erreur saveProduct:', err);
+    toast('❌ Erreur lors de la sauvegarde : ' + err, 'e');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Enregistrer';
   }
-
-  if (progressDiv) progressDiv.style.display = 'none';
-
-  const prodData = {
-    id: prodId,
-    nom,
-    emoji: document.getElementById('pe-emoji').value,
-    genre: document.getElementById('pe-genre').value,
-    cat: document.getElementById('pe-cat').value,
-    type,
-    opt_key: type === 'option_annuelle' ? document.getElementById('pe-optkey').value : undefined,
-    credits: parseInt(document.getElementById('pe-credits').value) || 0,
-    prix: parseFloat(document.getElementById('pe-prix').value) || 0,
-    desc: document.getElementById('pe-desc').value,
-    stock,
-    visible: document.getElementById('pe-vis').value === 'true',
-    imgs: finalImgs
-  };
-
-  if (LOCAL.editPid) {
-    const idx = LOCAL.products.findIndex(x => x.id === LOCAL.editPid);
-    if (idx >= 0) LOCAL.products[idx] = prodData;
-    toast('✅ Produit mis à jour avec ses photos !');
-  } else {
-    LOCAL.products.push(prodData);
-    toast('✅ Produit créé !');
-  }
-
-  // Sauvegarder dans Firebase
-  saveProdToFirebase(prodData);
-
-  saveBtn.disabled = false;
-  saveBtn.textContent = 'Enregistrer';
-  cm('prod-edit-modal');
-  go('admin-products');
 }
 
 // ─── ADMIN SUPPLIERS
