@@ -478,48 +478,83 @@ const LOCAL = {
 };
 
 // ═══════════════════════════════════════════
-// FIREBASE SYNC — charger les produits depuis Firebase
+// FIREBASE SYNC — synchronisation complète
 // ═══════════════════════════════════════════
+let _currentPage = null;
+function refreshCurrentPage() {
+  if (!_currentPage || document.querySelector('.modal-overlay.active')) return;
+  const area = document.getElementById('content');
+  if (!area) return;
+  const R = {
+    'dashboard':rDashboard,'catalog':rCatalog,'my-orders':rMyOrders,'my-rights':rMyRights,
+    'admin-dashboard':rAdminDash,'admin-orders':rAdminOrders,'admin-collabs':rAdminCollabs,
+    'admin-products':rAdminProducts,'admin-suppliers':rAdminSuppliers,
+    'admin-finance':rAdminFinance,'admin-settings':rAdminSettings
+  };
+  if (R[_currentPage]) area.innerHTML = R[_currentPage]();
+}
+
 function syncFromFirebase() {
   if (!FB_READY) return;
-  // Charger les produits (avec leurs photos)
+
+  // PRODUITS (photos, stocks, crédits...)
   DB_LIVE.ref('products').on('value', snap => {
-    if (snap.exists()) {
-      const fbProducts = snap.val();
-      // Mettre à jour les photos des produits existants
-      Object.entries(fbProducts).forEach(([key, fbProd]) => {
-        const localProd = LOCAL.products.find(p => p.id === fbProd.id);
-        if (localProd && fbProd.imgs) {
-          localProd.imgs = fbProd.imgs;
-        }
-      });
-      // Rafraîchir l'affichage si on est sur la page produits
-      const tb = document.getElementById('prod-tbody');
-      if (tb) tb.innerHTML = prodRows(LOCAL.products);
-    }
+    if (!snap.exists()) return;
+    Object.values(snap.val()).forEach(fbP => {
+      const idx = LOCAL.products.findIndex(p => p.id === fbP.id);
+      if (idx >= 0) LOCAL.products[idx] = {...LOCAL.products[idx], ...fbP};
+      else LOCAL.products.push(fbP);
+    });
+    refreshCurrentPage();
   });
-  // Charger les commandes
+
+  // COMMANDES
   DB_LIVE.ref('orders').on('value', snap => {
-    if (snap.exists()) {
-      const fbOrders = Object.values(snap.val());
-      // Fusionner avec les commandes locales (garder les données FB)
-      fbOrders.forEach(fbOrd => {
-        const idx = LOCAL.orders.findIndex(o => o.id === fbOrd.id);
-        if (idx >= 0) LOCAL.orders[idx] = fbOrd;
-        else LOCAL.orders.push(fbOrd);
-      });
-    }
+    if (!snap.exists()) return;
+    Object.values(snap.val()).forEach(fbO => {
+      const idx = LOCAL.orders.findIndex(o => o.id === fbO.id);
+      if (idx >= 0) LOCAL.orders[idx] = fbO;
+      else LOCAL.orders.push(fbO);
+    });
+    refreshCurrentPage();
   });
-  // Charger les collaborateurs
+
+  // COLLABORATEURS (crédits, droits, options...)
   DB_LIVE.ref('users').on('value', snap => {
-    if (snap.exists()) {
-      const fbUsers = Object.values(snap.val());
-      fbUsers.forEach(fbU => {
-        const idx = LOCAL.users.findIndex(u => u.id === fbU.id);
-        if (idx >= 0) LOCAL.users[idx] = fbU;
-        else LOCAL.users.push(fbU);
-      });
-    }
+    if (!snap.exists()) return;
+    Object.values(snap.val()).forEach(fbU => {
+      const idx = LOCAL.users.findIndex(u => u.id === fbU.id);
+      if (idx >= 0) LOCAL.users[idx] = fbU;
+      else LOCAL.users.push(fbU);
+    });
+    refreshCurrentPage();
+  });
+
+  // PARAMÈTRES (dotations, crédits par défaut)
+  DB_LIVE.ref('settings').on('value', snap => {
+    if (!snap.exists()) return;
+    Object.assign(LOCAL.settings, snap.val());
+    refreshCurrentPage();
+  });
+
+  // ADMINS
+  DB_LIVE.ref('admins').on('value', snap => {
+    if (!snap.exists()) return;
+    Object.values(snap.val()).forEach(fbA => {
+      const idx = LOCAL.admins.findIndex(a => a.id === fbA.id);
+      if (idx >= 0) LOCAL.admins[idx] = fbA;
+    });
+  });
+
+  // COMMANDES FOURNISSEURS
+  DB_LIVE.ref('supplier_orders').on('value', snap => {
+    if (!snap.exists()) return;
+    Object.values(snap.val()).forEach(fbS => {
+      const idx = LOCAL.supplier_orders.findIndex(s => s.id === fbS.id);
+      if (idx >= 0) LOCAL.supplier_orders[idx] = fbS;
+      else LOCAL.supplier_orders.push(fbS);
+    });
+    refreshCurrentPage();
   });
 }
 
@@ -679,6 +714,7 @@ function buildAdminNav(){const p=LOCAL.orders.filter(o=>o.statut==='attente').le
 function renderNav(items){document.getElementById('sb-nav').innerHTML=items.map(i=>`<button class="nav-item" id="nav-${i.id}" onclick="go('${i.id}')"><span class="nav-icon">${i.ic}</span>${i.lb}${i.badge?`<span class="nav-badge">${i.badge}</span>`:''}</button>`).join('');}
 const TITLES={'dashboard':'Tableau de bord','catalog':'Catalogue produits','my-orders':'Mes commandes','my-rights':'Mes droits & crédits','admin-dashboard':'Tableau de bord','admin-orders':'Gestion des commandes','admin-collabs':'Collaborateurs','admin-products':'Catalogue & Stocks','admin-suppliers':'Commandes fournisseurs','admin-finance':'Bilan financier','admin-settings':'Paramètres'};
 function go(s){
+  _currentPage=s;
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const btn=document.getElementById('nav-'+s);if(btn)btn.classList.add('active');
   document.getElementById('topbar-title').textContent=TITLES[s]||s;
@@ -1095,7 +1131,7 @@ function openSupplier(){
   document.getElementById('supm-body').innerHTML=`<div class="form-row"><div class="form-group"><label class="form-label">Fournisseur</label><select class="form-input sel-input" id="su-four"><option>Armor Lux</option><option>EPI Center</option><option>Autre</option></select></div><div class="form-group"><label class="form-label">N° commande</label><input type="text" class="form-input" id="su-num"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="su-date" value="${today()}"></div><div class="form-group"><label class="form-label">Réception prévue</label><input type="date" class="form-input" id="su-rec"></div></div><div class="form-group"><label class="form-label">Article</label><select class="form-input sel-input" id="su-prod">${LOCAL.products.map(p=>`<option value="${p.id}">${p.emoji} ${p.nom}</option>`).join('')}</select></div><div class="form-row"><div class="form-group"><label class="form-label">Taille</label><input type="text" class="form-input" id="su-sz" placeholder="ex: L, 42"></div><div class="form-group"><label class="form-label">Quantité</label><input type="number" class="form-input" id="su-qty" value="1" min="1"></div></div><div class="form-group"><label class="form-label">Prix unitaire (€)</label><input type="number" step="0.01" class="form-input" id="su-prix"></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="su-notes"></textarea></div>`;
   openModal('sup-modal');
 }
-function saveSupplier(){const pid=parseInt(document.getElementById('su-prod').value);const qty=parseInt(document.getElementById('su-qty').value)||1;const prix=parseFloat(document.getElementById('su-prix').value)||0;LOCAL.supplier_orders.push({id:LOCAL._sid++,fournisseur:document.getElementById('su-four').value,date:document.getElementById('su-date').value,num:document.getElementById('su-num').value,articles:[{pid,taille:document.getElementById('su-sz').value,qty,prix}],total:qty*prix,rec_prevue:document.getElementById('su-rec').value,rec_reelle:null,statut:'commandee',notes:document.getElementById('su-notes').value});cm('sup-modal');toast('✅ Commande fournisseur enregistrée.');go('admin-suppliers');}
+function saveSupplier(){const pid=parseInt(document.getElementById('su-prod').value);const qty=parseInt(document.getElementById('su-qty').value)||1;const prix=parseFloat(document.getElementById('su-prix').value)||0;const newSup={id:LOCAL._sid++,fournisseur:document.getElementById('su-four').value,date:document.getElementById('su-date').value,num:document.getElementById('su-num').value,articles:[{pid,taille:document.getElementById('su-sz').value,qty,prix}],total:qty*prix,rec_prevue:document.getElementById('su-rec').value,rec_reelle:null,statut:'commandee',notes:document.getElementById('su-notes').value};LOCAL.supplier_orders.push(newSup);if(FB_READY)DB_LIVE.ref('supplier_orders/'+newSup.id).set(newSup);cm('sup-modal');toast('✅ Commande fournisseur enregistrée.');go('admin-suppliers');}
 
 // ─── ADMIN FINANCE + EXCEL
 function rAdminFinance(){
@@ -1139,7 +1175,7 @@ function openAdminEdit(aid){
   openModal('adm-modal');
 }
 function saveAdmin(){const a=LOCAL.admins.find(x=>x.id===LOCAL.editAdmid);const pre=document.getElementById('adm-pre').value.trim();const nom=document.getElementById('adm-nom').value.trim();const email=document.getElementById('adm-email').value.trim().toLowerCase();const pwd=document.getElementById('adm-pwd').value;const actif=document.getElementById('adm-actif').value==='true';if(actif&&(!pre||!nom||!email)){toast('Champs obligatoires.','e');return;}a.prenom=pre;a.nom=nom;a.email=email;if(pwd)a.pwd=pwd;a.actif=actif;if(!actif){a.email='';a.pwd='';a.prenom='';a.nom='';}cm('adm-modal');toast('✅ Administrateur mis à jour.');go('admin-settings');}
-function saveSettings(){LOCAL.settings.droits_cl=parseInt(document.getElementById('s-cl').value)||5;LOCAL.settings.credits_vet=parseInt(document.getElementById('s-cvet').value)||500;LOCAL.settings.credits_chu=parseInt(document.getElementById('s-cchu').value)||100;toast('✅ Paramètres sauvegardés.');}
+function saveSettings(){LOCAL.settings.droits_cl=parseInt(document.getElementById('s-cl').value)||5;LOCAL.settings.credits_vet=parseInt(document.getElementById('s-cvet').value)||500;LOCAL.settings.credits_chu=parseInt(document.getElementById('s-cchu').value)||100;if(FB_READY)DB_LIVE.ref('settings').set(LOCAL.settings);toast('✅ Paramètres sauvegardés.');}
 
 // ═══════════════════════════════════════════
 // STATUT FIREBASE SUR PAGE LOGIN
