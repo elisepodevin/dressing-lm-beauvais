@@ -953,7 +953,7 @@ function rAdminDash(){
 
   // Calcul détaillé par TAILLE et par ARTICLE
   let taillesRupture=0, taillesFaibles=0, articlesRupture=0, articlesFaibles=0;
-  const rupDetails=[], lowDetails=[];
+  const rupDetails=[], lowDetails=[], artRupDetails=[], artLowDetails=[];
   LOCAL.products.filter(p=>p.visible===true||p.visible==='true').forEach(p=>{
     const entries=Object.entries(p.stock);
     const totalStock=entries.reduce((a,[,q])=>a+q,0);
@@ -963,8 +963,8 @@ function rAdminDash(){
       else if(q<=2){taillesFaibles++;lowDetails.push({nom:p.nom,taille:sz,qty:q});}
     });
     // Par article : rupture = total 0, faible = total ≤ 5
-    if(totalStock===0)articlesRupture++;
-    else if(totalStock<=5)articlesFaibles++;
+    if(totalStock===0){articlesRupture++;artRupDetails.push({nom:p.nom,total:0});}
+    else if(totalStock<=5){articlesFaibles++;artLowDetails.push({nom:p.nom,total:totalStock});}
   });
 
   const recent=[...O].sort((a,b)=>b.id-a.id).slice(0,6);
@@ -984,7 +984,7 @@ function rAdminDash(){
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card"><div class="card-head"><span class="card-title">📋 Dernières commandes</span><button class="btn btn-outline btn-sm" onclick="go('admin-orders')">Voir tout</button></div><div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Statut</th></tr></thead><tbody>${recent.map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td>${stBadge(o.statut)}</td></tr>`;}).join('')}</tbody></table></div></div>
-    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock par taille</span></div><div class="card-body" style="padding:9px 15px;max-height:300px;overflow-y:auto">${rupDetails.slice(0,10).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span>${r.nom}</span><span class="badge br">${r.taille} — Rupture</span></div>`).join('')}${lowDetails.slice(0,10).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.taille} — ${r.qty} restant(s)</span></div>`).join('')}${!rupDetails.length&&!lowDetails.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
+    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock</span></div><div class="card-body" style="padding:9px 15px;max-height:500px;overflow-y:auto">${artRupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:8px 0 4px">🚫 Articles en rupture totale</div>${artRupDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span><strong>${r.nom}</strong></span><span class="badge br">Rupture totale</span></div>`).join('')}`:''}${artLowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:10px 0 4px">⚠️ Articles stock faible (≤ 5)</div>${artLowDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.total} pièce(s)</span></div>`).join('')}`:''}${rupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:10px 0 4px">🚫 Tailles en rupture (stock = 0)</div>${rupDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span>${r.nom}</span><span class="badge br">${r.taille} — Rupture</span></div>`).join('')}`:''}${lowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:10px 0 4px">⚠️ Tailles stock faible (≤ 2)</div>${lowDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.taille} — ${r.qty} restant(s)</span></div>`).join('')}`:''}${!rupDetails.length&&!lowDetails.length&&!artRupDetails.length&&!artLowDetails.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
   </div>`;
 }
 
