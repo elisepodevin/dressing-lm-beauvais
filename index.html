@@ -515,40 +515,36 @@ function refreshCurrentPage() {
 function syncFromFirebase() {
   if (!FB_READY) return;
 
-  // PRODUITS (photos, stocks, crédits...)
+  // PRODUITS — REMPLACER le tableau local par Firebase
   DB_LIVE.ref('products').on('value', snap => {
     if (!snap.exists()) return;
-    Object.values(snap.val()).forEach(fbP => {
-      const idx = LOCAL.products.findIndex(p => p.id === fbP.id);
-      if (idx >= 0) LOCAL.products[idx] = {...LOCAL.products[idx], ...fbP};
-      else LOCAL.products.push(fbP);
-    });
+    LOCAL.products = Object.values(snap.val());
     refreshCurrentPage();
   });
 
-  // COMMANDES
+  // COMMANDES — REMPLACER
   DB_LIVE.ref('orders').on('value', snap => {
-    if (!snap.exists()) return;
-    Object.values(snap.val()).forEach(fbO => {
-      const idx = LOCAL.orders.findIndex(o => o.id === fbO.id);
-      if (idx >= 0) LOCAL.orders[idx] = fbO;
-      else LOCAL.orders.push(fbO);
-    });
+    if (snap.exists()) {
+      LOCAL.orders = Object.values(snap.val());
+    } else {
+      LOCAL.orders = [];
+    }
+    // Mettre à jour le compteur d'ID
+    if(LOCAL.orders.length) LOCAL._oid = Math.max(...LOCAL.orders.map(o=>o.id)) + 1;
     refreshCurrentPage();
   });
 
-  // COLLABORATEURS (crédits, droits, options...)
+  // COLLABORATEURS — REMPLACER
   DB_LIVE.ref('users').on('value', snap => {
-    if (!snap.exists()) return;
-    Object.values(snap.val()).forEach(fbU => {
-      const idx = LOCAL.users.findIndex(u => u.id === fbU.id);
-      if (idx >= 0) LOCAL.users[idx] = fbU;
-      else LOCAL.users.push(fbU);
-    });
+    if (snap.exists()) {
+      LOCAL.users = Object.values(snap.val());
+    } else {
+      LOCAL.users = [];
+    }
     refreshCurrentPage();
   });
 
-  // PARAMÈTRES (dotations, crédits par défaut)
+  // PARAMÈTRES
   DB_LIVE.ref('settings').on('value', snap => {
     if (!snap.exists()) return;
     Object.assign(LOCAL.settings, snap.val());
@@ -558,21 +554,34 @@ function syncFromFirebase() {
   // ADMINS
   DB_LIVE.ref('admins').on('value', snap => {
     if (!snap.exists()) return;
-    Object.values(snap.val()).forEach(fbA => {
-      const idx = LOCAL.admins.findIndex(a => a.id === fbA.id);
-      if (idx >= 0) LOCAL.admins[idx] = fbA;
-    });
+    LOCAL.admins = Object.values(snap.val());
   });
 
-  // COMMANDES FOURNISSEURS
+  // COMMANDES FOURNISSEURS — REMPLACER
   DB_LIVE.ref('supplier_orders').on('value', snap => {
-    if (!snap.exists()) return;
-    Object.values(snap.val()).forEach(fbS => {
-      const idx = LOCAL.supplier_orders.findIndex(s => s.id === fbS.id);
-      if (idx >= 0) LOCAL.supplier_orders[idx] = fbS;
-      else LOCAL.supplier_orders.push(fbS);
-    });
+    if (snap.exists()) {
+      LOCAL.supplier_orders = Object.values(snap.val());
+      if(LOCAL.supplier_orders.length) LOCAL._sid = Math.max(...LOCAL.supplier_orders.map(s=>s.id)) + 1;
+    } else {
+      LOCAL.supplier_orders = [];
+    }
     refreshCurrentPage();
+  });
+
+  // NOTIFICATIONS EMAIL — Charger depuis Firebase
+  DB_LIVE.ref('email_log').on('value', snap => {
+    if (snap.exists()) {
+      const logs = Object.values(snap.val());
+      // Convertir les logs Firebase en format EMAIL_LOG
+      EMAIL_LOG = logs.map(l => ({
+        type: l.type || 'new_order',
+        to: l.to || '',
+        from: l.userName || l.from || '',
+        msg: l.message || l.msg || `Commande #${l.orderId}`,
+        date: l.date || ''
+      }));
+      updateNotifBadge();
+    }
   });
 }
 
@@ -960,6 +969,8 @@ function saveOrder(){
     });
     if(u)saveUserToFirebase(u);
     toast('🔄 Stocks et crédits restaurés.');
+    // Notification annulation aux admins
+    sendEmailNotif('order_cancelled', o, u || {prenom:'Inconnu',nom:'',email:''});
   }
 
   saveOrderToFirebase(o);
@@ -977,8 +988,12 @@ function deleteOrder(id){
   if(!confirm(`Supprimer définitivement la commande #${id} ?`))return;
   const idx=LOCAL.orders.findIndex(o=>o.id===id);
   if(idx>=0)LOCAL.orders.splice(idx,1);
-  if(FB_READY)DB_LIVE.ref('orders/'+id).remove().then(()=>console.log('Commande supprimée')).catch(e=>console.error(e));
-  toast(`🗑️ Commande #${id} supprimée.`);go('admin-orders');
+  if(FB_READY){
+    DB_LIVE.ref('orders/'+id).remove()
+      .then(()=>{console.log('✅ Commande '+id+' supprimée de Firebase');toast(`🗑️ Commande #${id} supprimée.`);})
+      .catch(e=>{console.error('❌ Erreur suppression commande:',e);toast('❌ Erreur suppression: '+e.message,'e');});
+  }
+  go('admin-orders');
 }
 
 // ── Supprimer un collaborateur
@@ -988,8 +1003,12 @@ function deleteCollab(id){
   if(!confirm(`Supprimer définitivement ${c.prenom} ${c.nom} ?\n\nAttention : ses commandes ne seront pas supprimées.`))return;
   const idx=LOCAL.users.findIndex(u=>u.id===id);
   if(idx>=0)LOCAL.users.splice(idx,1);
-  if(FB_READY)DB_LIVE.ref('users/'+id).remove().then(()=>console.log('Utilisateur supprimé')).catch(e=>console.error(e));
-  toast(`🗑️ ${c.prenom} ${c.nom} supprimé.`);go('admin-collabs');
+  if(FB_READY){
+    DB_LIVE.ref('users/'+id).remove()
+      .then(()=>{console.log('✅ Utilisateur '+id+' supprimé de Firebase');toast(`🗑️ ${c.prenom} ${c.nom} supprimé.`);})
+      .catch(e=>{console.error('❌ Erreur suppression user:',e);toast('❌ Erreur suppression: '+e.message,'e');});
+  }
+  go('admin-collabs');
 }
 
 function rAdminCollabs(){
@@ -1321,40 +1340,39 @@ let EMAIL_LOG = [];
 
 // ── Envoi de notification (EmailJS ou log local)
 function sendEmailNotif(type, order, user) {
-  const admEmails = LOCAL.admins.filter(a => a.actif && a.email).map(a => a.email);
+  const admEmails = LOCAL.admins.filter(a => (a.actif===true||a.actif==='true'||a.actif==='TRUE') && a.email).map(a => a.email);
   const now = new Date().toLocaleString('fr-FR');
   const articles = order.articles.map(a => `${pName(a.pid)} (${a.taille})`).join(', ');
 
   if (type === 'new_order') {
-    // Notifier les admins
     const msg = `📦 Nouvelle commande #${order.id}\nDe : ${user.prenom} ${user.nom} (${user.email})\nArticles : ${articles}\nTotal : ${order.total} crédits\nDate : ${now}`;
     admEmails.forEach(email => {
       EMAIL_LOG.push({type:'new_order', to:email, from:`${user.prenom} ${user.nom}`, msg, date:now});
-      // Tentative EmailJS
-      tryEmailJS({
-        to_email: email,
-        subject: `[Dressing Pro] Nouvelle commande #${order.id} de ${user.prenom} ${user.nom}`,
-        message: msg
-      });
     });
+    console.log('📧 Notification new_order envoyée à:', admEmails);
     toast(`📧 Notification envoyée aux administrateurs.`);
     updateNotifBadge();
-    // Sauvegarder le log dans Firebase
-    if(FB_READY) DB_LIVE.ref('email_log').push({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now});
+    if(FB_READY) DB_LIVE.ref('email_log').push(cleanObj({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now}));
   }
 
   if (type === 'order_ready') {
-    // Notifier le collaborateur
     const msg = `✅ Votre commande #${order.id} est prête !\nArticles : ${articles}\nVous pouvez la récupérer au bureau RH.\nDate : ${now}`;
     EMAIL_LOG.push({type:'order_ready', to:user.email, from:'Dressing Pro', msg, date:now});
-    tryEmailJS({
-      to_email: user.email,
-      subject: `[Dressing Pro] Votre commande #${order.id} est prête !`,
-      message: msg
-    });
+    console.log('📧 Notification order_ready envoyée à:', user.email);
     toast(`📧 Notification envoyée à ${user.prenom} ${user.nom}.`);
     updateNotifBadge();
-    if(FB_READY) DB_LIVE.ref('email_log').push({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now});
+    if(FB_READY) DB_LIVE.ref('email_log').push(cleanObj({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now}));
+  }
+
+  if (type === 'order_cancelled') {
+    const msg = `❌ Commande #${order.id} annulée\nPar : ${user.prenom} ${user.nom} (${user.email})\nArticles : ${articles}\nStocks restaurés automatiquement.\nDate : ${now}`;
+    admEmails.forEach(email => {
+      EMAIL_LOG.push({type:'order_cancelled', to:email, from:`${user.prenom} ${user.nom}`, msg, date:now});
+    });
+    console.log('📧 Notification order_cancelled envoyée à:', admEmails);
+    toast(`📧 Notification d'annulation envoyée.`);
+    updateNotifBadge();
+    if(FB_READY) DB_LIVE.ref('email_log').push(cleanObj({type, orderId:order.id, userName:`${user.prenom} ${user.nom}`, date:now}));
   }
 }
 
@@ -1440,17 +1458,22 @@ function openNotifPanel() {
     bd.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-h">Aucune notification</div><p style="font-size:13px;color:var(--n400)">Les notifications apparaîtront ici à chaque commande.</p></div>';
   } else {
     bd.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-xs btn-danger" onclick="clearAllNotifs()">🗑️ Tout supprimer</button></div>` +
-    [...logs].reverse().map((e,i) => `
-      <div style="padding:12px;background:${e.type==='new_order'?'var(--ol)':'var(--gl)'};border-radius:var(--r8);margin-bottom:8px;border-left:3px solid ${e.type==='new_order'?'var(--o)':'var(--g)'};position:relative">
+    [...logs].reverse().map((e,i) => {
+      const bgColor = e.type==='new_order'?'var(--ol)':e.type==='order_cancelled'?'var(--rl)':'var(--gl)';
+      const borderColor = e.type==='new_order'?'var(--o)':e.type==='order_cancelled'?'var(--r)':'var(--g)';
+      const labelColor = e.type==='new_order'?'#c2410c':e.type==='order_cancelled'?'var(--r)':'var(--gd)';
+      const label = e.type==='new_order'?'📦 Nouvelle commande':e.type==='order_cancelled'?'❌ Commande annulée':'✅ Commande prête';
+      return `
+      <div style="padding:12px;background:${bgColor};border-radius:var(--r8);margin-bottom:8px;border-left:3px solid ${borderColor};position:relative">
         <button onclick="deleteNotif(${EMAIL_LOG.length-1-i})" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--n400);padding:2px 5px" title="Supprimer">✕</button>
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-right:20px">
-          <span style="font-size:12px;font-weight:800;color:${e.type==='new_order'?'#c2410c':'var(--gd)'}">${e.type==='new_order'?'📦 Nouvelle commande':'✅ Commande prête'}</span>
+          <span style="font-size:12px;font-weight:800;color:${labelColor}">${label}</span>
           <span style="font-size:11px;color:var(--n400)">${e.date}</span>
         </div>
         <div style="font-size:12px;color:var(--n600)">À : ${e.to}</div>
         <div style="font-size:13px;color:var(--n800);margin-top:4px;white-space:pre-line;line-height:1.4">${e.msg}</div>
       </div>
-    `).join('');
+    `;}).join('');
   }
   openModal('notif-modal');
 }
@@ -1464,6 +1487,7 @@ function deleteNotif(idx) {
 function clearAllNotifs() {
   if(!confirm('Supprimer toutes les notifications ?'))return;
   EMAIL_LOG = [];
+  if(FB_READY) DB_LIVE.ref('email_log').remove();
   updateNotifBadge();
   openNotifPanel();
   toast('🗑️ Notifications supprimées.');
@@ -1485,12 +1509,46 @@ document.getElementById('first-email').addEventListener('keypress',e=>{if(e.key=
 // Init Firebase sync et statut
 document.addEventListener('fbloaded', () => {
   updateFbStatus();
-  if(FB_READY) syncFromFirebase();
+  if(FB_READY) {
+    // Vérifier si Firebase a déjà des données
+    DB_LIVE.ref('products').once('value', snap => {
+      if(!snap.exists()) {
+        // Premier lancement — pousser les données par défaut vers Firebase
+        console.log('🔧 Premier lancement : initialisation Firebase...');
+        const updates = {};
+        LOCAL.products.forEach(p => { updates['products/'+p.id] = cleanObj(p); });
+        LOCAL.users.forEach(u => { updates['users/'+u.id] = cleanObj(u); });
+        LOCAL.orders.forEach(o => { updates['orders/'+o.id] = cleanObj(o); });
+        LOCAL.admins.forEach(a => { updates['admins/'+a.id] = cleanObj(a); });
+        updates['settings'] = cleanObj(LOCAL.settings);
+        LOCAL.supplier_orders.forEach(s => { updates['supplier_orders/'+s.id] = cleanObj(s); });
+        DB_LIVE.ref().update(updates).then(() => {
+          console.log('✅ Firebase initialisé avec les données par défaut');
+          syncFromFirebase();
+        }).catch(e => console.error('Erreur init:', e));
+      } else {
+        syncFromFirebase();
+      }
+    });
+  }
 });
 setTimeout(() => {
   if (!window._fbLoaded) { window._fbReady = false; updateFbStatus(); }
 }, 3000);
-if (window._fbLoaded) { updateFbStatus(); if(FB_READY) syncFromFirebase(); }
+if (window._fbLoaded) { updateFbStatus(); if(FB_READY) {
+  DB_LIVE.ref('products').once('value', snap => {
+    if(!snap.exists()) {
+      const updates = {};
+      LOCAL.products.forEach(p => { updates['products/'+p.id] = cleanObj(p); });
+      LOCAL.users.forEach(u => { updates['users/'+u.id] = cleanObj(u); });
+      LOCAL.orders.forEach(o => { updates['orders/'+o.id] = cleanObj(o); });
+      LOCAL.admins.forEach(a => { updates['admins/'+a.id] = cleanObj(a); });
+      updates['settings'] = cleanObj(LOCAL.settings);
+      LOCAL.supplier_orders.forEach(s => { updates['supplier_orders/'+s.id] = cleanObj(s); });
+      DB_LIVE.ref().update(updates).then(() => syncFromFirebase());
+    } else { syncFromFirebase(); }
+  });
+} }
 </script>
 </body>
 </html>
