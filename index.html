@@ -807,8 +807,8 @@ function rDashboard(){
 let AF={genre:'Tous',cat:'Toutes'};
 function rCatalog(){
   const genres=['Tous','Homme','Femme','Mixte'];
-  const cats=['Toutes',...new Set(LOCAL.products.filter(p=>p.visible).map(p=>p.cat))];
-  const list=LOCAL.products.filter(p=>{if(!p.visible)return false;if(AF.genre!=='Tous'&&p.genre!==AF.genre)return false;if(AF.cat!=='Toutes'&&p.cat!==AF.cat)return false;return true;});
+  const cats=['Toutes',...new Set(LOCAL.products.filter(p=>p.visible===true||p.visible==='true').map(p=>p.cat))];
+  const list=LOCAL.products.filter(p=>{if(p.visible!==true&&p.visible!=='true')return false;if(AF.genre!=='Tous'&&p.genre!==AF.genre)return false;if(AF.cat!=='Toutes'&&p.cat!==AF.cat)return false;return true;});
   const u=liveU();
   const cards=list.map(p=>{
     const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);
@@ -941,22 +941,40 @@ function rAdminDash(){
   const O=LOCAL.orders;
   const att=O.filter(o=>o.statut==='attente').length,prep=O.filter(o=>o.statut==='preparation').length,pret=O.filter(o=>o.statut==='prete').length,rem=O.filter(o=>o.statut==='remise').length;
   const cost=O.filter(o=>o.statut==='remise').reduce((s,o)=>s+o.cout,0);
-  const lowP=LOCAL.products.filter(p=>{const t=Object.values(p.stock).reduce((a,b)=>a+b,0);return t>0&&t<=3&&p.visible;});
-  const outP=LOCAL.products.filter(p=>Object.values(p.stock).reduce((a,b)=>a+b,0)===0&&p.visible);
+
+  // Calcul détaillé par TAILLE
+  let taillesRupture=0, taillesFaibles=0, articlesRupture=0, articlesFaibles=0;
+  const rupDetails=[], lowDetails=[];
+  LOCAL.products.filter(p=>p.visible===true||p.visible==='true').forEach(p=>{
+    const entries=Object.entries(p.stock);
+    const totalStock=entries.reduce((a,[,q])=>a+q,0);
+    let hasRupture=false, hasLow=false;
+    entries.forEach(([sz,q])=>{
+      if(q===0){taillesRupture++;hasRupture=true;rupDetails.push({nom:p.nom,taille:sz});}
+      else if(q<=2){taillesFaibles++;hasLow=true;lowDetails.push({nom:p.nom,taille:sz,qty:q});}
+    });
+    if(totalStock===0)articlesRupture++;
+    else if(hasLow||hasRupture)articlesFaibles++;
+  });
+
   const recent=[...O].sort((a,b)=>b.id-a.id).slice(0,6);
   return`<div class="stats-grid">
-    <div class="stat b"><div class="stat-label">Collaborateurs</div><div class="stat-val">${LOCAL.users.filter(u=>u.actif).length}</div></div>
+    <div class="stat b"><div class="stat-label">Collaborateurs</div><div class="stat-val">${LOCAL.users.filter(u=>u.actif===true||u.actif==='true').length}</div></div>
     <div class="stat o"><div class="stat-label">En attente</div><div class="stat-val">${att}</div></div>
     <div class="stat y"><div class="stat-label">En préparation</div><div class="stat-val">${prep}</div></div>
     <div class="stat g"><div class="stat-label">Prêtes</div><div class="stat-val">${pret}</div></div>
     <div class="stat g"><div class="stat-label">Remises</div><div class="stat-val">${rem}</div></div>
-    <div class="stat r"><div class="stat-label">Ruptures</div><div class="stat-val">${outP.length}</div></div>
-    <div class="stat o"><div class="stat-label">Stocks faibles</div><div class="stat-val">${lowP.length}</div></div>
     <div class="stat g"><div class="stat-label">Coût distribué</div><div class="stat-val">${cost.toFixed(0)}€</div></div>
+  </div>
+  <div class="stats-grid" style="margin-bottom:14px">
+    <div class="stat r"><div class="stat-label">Articles en rupture totale</div><div class="stat-val">${articlesRupture}</div><div class="stat-sub">0 stock toutes tailles</div></div>
+    <div class="stat r"><div class="stat-label">Tailles en rupture</div><div class="stat-val">${taillesRupture}</div><div class="stat-sub">Stock = 0 sur une taille</div></div>
+    <div class="stat o"><div class="stat-label">Articles avec stock faible</div><div class="stat-val">${articlesFaibles}</div><div class="stat-sub">Au moins 1 taille ≤ 2</div></div>
+    <div class="stat o"><div class="stat-label">Tailles stock faible</div><div class="stat-val">${taillesFaibles}</div><div class="stat-sub">Stock ≤ 2 sur une taille</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card"><div class="card-head"><span class="card-title">📋 Dernières commandes</span><button class="btn btn-outline btn-sm" onclick="go('admin-orders')">Voir tout</button></div><div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Statut</th></tr></thead><tbody>${recent.map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td>${stBadge(o.statut)}</td></tr>`;}).join('')}</tbody></table></div></div>
-    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock</span></div><div class="card-body" style="padding:9px 15px">${outP.slice(0,5).map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px;display:flex;align-items:center;gap:7px"><span class="stock-dot out"></span>${p.nom}</span><span class="badge br">Rupture</span></div>`).join('')}${lowP.slice(0,4).map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--n100)"><span style="font-size:13px;display:flex;align-items:center;gap:7px"><span class="stock-dot low"></span>${p.nom}</span><span class="badge bo">Faible</span></div>`).join('')}${!outP.length&&!lowP.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
+    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock par taille</span></div><div class="card-body" style="padding:9px 15px;max-height:300px;overflow-y:auto">${rupDetails.slice(0,10).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span>${r.nom}</span><span class="badge br">${r.taille} — Rupture</span></div>`).join('')}${lowDetails.slice(0,10).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.taille} — ${r.qty} restant(s)</span></div>`).join('')}${!rupDetails.length&&!lowDetails.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
   </div>`;
 }
 
@@ -965,14 +983,50 @@ function rAdminOrders(){
   return`<div class="sh"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" class="search-input" placeholder="Rechercher..." id="ord-s" oninput="filterOrders()"><select class="sel-input" id="ord-st" onchange="filterOrders()"><option value="">Tous les statuts</option><option value="attente">En attente</option><option value="preparation">En préparation</option><option value="prete">Prête</option><option value="remise">Remise</option><option value="annulee">Annulée</option></select></div></div>
   <div class="card"><div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Articles</th><th>Crédits</th><th>Coût</th><th>Statut</th><th></th></tr></thead><tbody id="ord-tbody">${ordRows(LOCAL.orders)}</tbody></table></div></div>`;
 }
-function ordRows(ords){return[...ords].sort((a,b)=>b.id-a.id).map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.articles.map(a=>pName(a.pid)).join(', ')}</td><td>${o.total}</td><td>${o.cout.toFixed(2)}€</td><td>${stBadge(o.statut)}</td><td style="display:flex;gap:4px"><button class="btn btn-xs btn-outline" onclick="openOrdEdit(${o.id})">Modifier</button><button class="btn btn-xs btn-danger" onclick="deleteOrder(${o.id})">✕</button></td></tr>`;}).join('');}
+function ordRows(ords){return[...ords].sort((a,b)=>b.id-a.id).map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.articles.map(a=>pName(a.pid)).join(', ')}</td><td>${o.total}</td><td>${o.cout.toFixed(2)}€</td><td>${stBadge(o.statut)}</td><td style="display:flex;gap:4px"><button class="btn btn-xs btn-ghost" onclick="viewOrderDetail(${o.id})" title="Voir détail">👁️</button><button class="btn btn-xs btn-outline" onclick="openOrdEdit(${o.id})">Modifier</button><button class="btn btn-xs btn-danger" onclick="deleteOrder(${o.id})">✕</button></td></tr>`;}).join('');}
 function filterOrders(){const s=document.getElementById('ord-s')?.value.toLowerCase()||'';const st=document.getElementById('ord-st')?.value||'';const list=LOCAL.orders.filter(o=>{const u=uObj(o.uid);return(!s||`${u?.prenom} ${u?.nom} #${o.id}`.toLowerCase().includes(s))&&(!st||o.statut===st);});const tb=document.getElementById('ord-tbody');if(tb)tb.innerHTML=ordRows(list);}
+
+// ── Voir le détail d'une commande (ce qu'il faut préparer)
+function viewOrderDetail(id){
+  const o=LOCAL.orders.find(x=>x.id===id);if(!o)return;
+  const u=uObj(o.uid);
+  const artRows=o.articles.map(a=>{
+    const p=pObj(a.pid);
+    const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');
+    return`<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--n50);border-radius:var(--r8);margin-bottom:8px;border:1px solid var(--n200)">
+      <div style="width:56px;height:56px;border-radius:var(--r8);overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${th}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:800;color:var(--n900)">${p?.nom||'Article supprimé'}</div>
+        <div style="font-size:12px;color:var(--n500);margin-top:2px">${p?.genre||''} · ${p?.cat||''}</div>
+        <div style="display:flex;gap:12px;margin-top:6px">
+          <span style="font-size:13px;font-weight:700;background:var(--gl);color:var(--gd);padding:3px 10px;border-radius:6px">Taille : ${a.taille}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--n600)">${a.credits>0?a.credits+' crédits':'Gratuit'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('om-body').innerHTML=`
+    <div style="padding:14px;background:var(--n50);border-radius:var(--r8);margin-bottom:14px;border:1px solid var(--n200)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:16px;font-weight:800;color:var(--n900)">Commande #${o.id}</span>
+        ${stBadge(o.statut)}
+      </div>
+      <div style="font-size:13px;color:var(--n500)">👤 ${u?.prenom||''} ${u?.nom||''} · ${fmtDate(o.date)}</div>
+      <div style="font-size:13px;color:var(--n500);margin-top:2px">💳 ${o.total} crédits · 💶 ${o.cout.toFixed(2)}€</div>
+    </div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n500);margin-bottom:8px">📋 Articles à préparer (${o.articles.length})</div>
+    ${artRows}
+    ${o.comment?`<div class="alert alert-i" style="margin-top:10px">💬 <div><strong>Commentaire :</strong> ${o.comment}</div></div>`:''}`;
+  document.querySelector('#order-modal .modal-foot').innerHTML=`<button class="btn btn-ghost" onclick="cm('order-modal')">Fermer</button><button class="btn btn-outline" onclick="cm('order-modal');openOrdEdit(${o.id})">✏️ Modifier</button>`;
+  openModal('order-modal');
+}
 function openOrdEdit(id){
   LOCAL.editOid=id;const o=LOCAL.orders.find(x=>x.id===id);const u=uObj(o.uid);
   document.getElementById('om-body').innerHTML=`<div style="margin-bottom:12px;padding:10px;background:var(--n50);border-radius:var(--r8)"><div style="font-size:13px;font-weight:800;margin-bottom:3px">Commande #${o.id} — ${u?.prenom} ${u?.nom}</div><div style="font-size:12px;color:var(--n400)">${fmtDate(o.date)} · ${o.total} crédits</div></div>
   <div class="form-group"><label class="form-label">Statut</label><select class="form-input sel-input" id="oe-st"><option value="attente" ${o.statut==='attente'?'selected':''}>En attente</option><option value="preparation" ${o.statut==='preparation'?'selected':''}>En préparation</option><option value="prete" ${o.statut==='prete'?'selected':''}>Prête</option><option value="remise" ${o.statut==='remise'?'selected':''}>Remise effectuée</option><option value="annulee" ${o.statut==='annulee'?'selected':''}>Annulée</option></select></div>
   <div class="form-group"><label class="form-label">Commentaire RH</label><textarea class="form-textarea" id="oe-cm">${o.comment}</textarea></div>
   <div class="form-group"><label class="form-label">Coût réel (€)</label><input type="number" step="0.01" class="form-input" id="oe-cost" value="${o.cout}"></div>`;
+  document.querySelector('#order-modal .modal-foot').innerHTML=`<button class="btn btn-ghost" onclick="cm('order-modal')">Annuler</button><button class="btn btn-primary" onclick="saveOrder()">Enregistrer</button>`;
   openModal('order-modal');
 }
 function saveOrder(){
@@ -1090,9 +1144,22 @@ function rAdminProducts(){
   return`<div class="sh"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" class="search-input" placeholder="Rechercher..." id="prod-s" oninput="filterProds()"><select class="sel-input" id="prod-cat-f" onchange="filterProds()"><option value="">Toutes catégories</option>${[...new Set(LOCAL.products.map(p=>p.cat))].map(c=>`<option>${c}</option>`).join('')}</select></div><button class="btn btn-primary btn-sm" onclick="openProdEdit()">+ Nouveau produit</button></div>
   <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Article</th><th>Genre</th><th>Catégorie</th><th>Dotation</th><th>Crédits</th><th>Prix réel</th><th>Stock</th><th>Visible</th><th></th></tr></thead><tbody id="prod-tbody">${prodRows(LOCAL.products)}</tbody></table></div></div>`;
 }
-function prodRows(list){return list.map(p=>{const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);const sc=tot===0?'out':tot<=3?'low':'ok';const szH=Object.entries(p.stock).map(([s,q])=>`<span style="display:inline-block;margin:1px;padding:1px 5px;border-radius:3px;font-size:10px;background:${q===0?'var(--rl)':q<=2?'var(--yl)':'var(--gl)'};color:${q===0?'var(--r)':q<=2?'#92400e':'var(--gd)'}">${s}:${q}</span>`).join('');const thH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:15px">${p.emoji}</span>`;return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="prod-thumb-sm">${thH}</div><strong>${p.nom}</strong></div></td><td>${p.genre}</td><td>${p.cat}</td><td>${dtag(p.type)}</td><td>${p.credits}</td><td>${p.prix.toFixed(2)}€</td><td><div style="display:flex;align-items:center;gap:5px"><span class="stock-dot ${sc}"></span><strong>${tot}</strong></div><div style="margin-top:2px">${szH}</div></td><td>${p.visible?'<span class="badge bg">Oui</span>':'<span class="badge bn">Non</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openProdEdit(${p.id})">Modifier</button><button class="btn btn-xs btn-ghost" onclick="toggleVis(${p.id})">${p.visible?'Masquer':'Afficher'}</button></td></tr>`;}).join('');}
+function prodRows(list){return list.map(p=>{const isVis=p.visible===true||p.visible==='true';const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);const sc=tot===0?'out':tot<=3?'low':'ok';const szH=Object.entries(p.stock).map(([s,q])=>`<span style="display:inline-block;margin:1px;padding:1px 5px;border-radius:3px;font-size:10px;background:${q===0?'var(--rl)':q<=2?'var(--yl)':'var(--gl)'};color:${q===0?'var(--r)':q<=2?'#92400e':'var(--gd)'}">${s}:${q}</span>`).join('');const thH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:15px">${p.emoji}</span>`;return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="prod-thumb-sm">${thH}</div><strong>${p.nom}</strong></div></td><td>${p.genre}</td><td>${p.cat}</td><td>${dtag(p.type)}</td><td>${p.credits}</td><td>${p.prix.toFixed(2)}€</td><td><div style="display:flex;align-items:center;gap:5px"><span class="stock-dot ${sc}"></span><strong>${tot}</strong></div><div style="margin-top:2px">${szH}</div></td><td>${isVis?'<span class="badge bg">Oui</span>':'<span class="badge bn">Non</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openProdEdit(${p.id})">Modifier</button><button class="btn btn-xs btn-ghost" onclick="toggleVis(${p.id})">${isVis?'Masquer':'Afficher'}</button></td></tr>`;}).join('');}
 function filterProds(){const s=document.getElementById('prod-s')?.value.toLowerCase()||'';const cat=document.getElementById('prod-cat-f')?.value||'';const list=LOCAL.products.filter(p=>(!s||p.nom.toLowerCase().includes(s))&&(!cat||p.cat===cat));const tb=document.getElementById('prod-tbody');if(tb)tb.innerHTML=prodRows(list);}
-function toggleVis(id){const p=pObj(id);if(p){p.visible=!p.visible;saveProdToFirebase(p);toast(`✅ ${p.nom} ${p.visible?'affiché':'masqué'}.`);go('admin-products');}}
+function toggleVis(id){const p=pObj(id);if(p){p.visible=!(p.visible===true||p.visible==='true');saveProdToFirebase(p);toast(`✅ ${p.nom} ${p.visible?'affiché':'masqué'}.`);go('admin-products');}}
+
+function deleteProdFromModal(id){
+  const p=pObj(id);if(!p)return;
+  if(!confirm(`Supprimer définitivement "${p.nom}" ?\n\nCette action est irréversible.`))return;
+  const idx=LOCAL.products.findIndex(x=>x.id===id);
+  if(idx>=0)LOCAL.products.splice(idx,1);
+  if(FB_READY){
+    DB_LIVE.ref('products/'+id).remove()
+      .then(()=>{toast(`🗑️ ${p.nom} supprimé.`);})
+      .catch(e=>{toast('❌ Erreur: '+e.message,'e');});
+  }
+  cm('prod-edit-modal');go('admin-products');
+}
 
 function openProdEdit(id){
   LOCAL.editPid=id||null;const p=id?pObj(id):null;
@@ -1117,7 +1184,7 @@ function openProdEdit(id){
       <div class="img-grid" id="pe-imgs-grid">${imgsH}</div>
     </div>
     <div class="form-group"><label class="form-label" style="margin-bottom:7px">Stock par taille</label><div id="pe-stock-rows">${stockRows}</div><button type="button" class="btn btn-xs btn-ghost" style="margin-top:5px" onclick="addStockRow()">+ Ajouter une taille</button></div>
-    <div class="form-group"><label class="form-label">Visible</label><select class="form-input sel-input" id="pe-vis"><option value="true" ${p?.visible!==false?'selected':''}>Oui</option><option value="false" ${p?.visible===false?'selected':''}>Non</option></select></div>`;
+    <div class="form-group"><label class="form-label">Visible</label><select class="form-input sel-input" id="pe-vis"><option value="true" ${p?.visible!==false?'selected':''}>Oui</option><option value="false" ${p?.visible===false?'selected':''}>Non</option></select></div>${p?`<div class="sep"></div><div style="padding:12px;background:var(--rl);border-radius:var(--r8);border:1px solid #fca5a5"><div style="font-size:12px;font-weight:700;color:var(--r);margin-bottom:8px">⚠️ Zone dangereuse</div><button class="btn btn-danger btn-sm" onclick="deleteProdFromModal(${p.id})">🗑️ Supprimer définitivement ce produit</button></div>`:''}`;
   window._tImgs = p?.imgs ? [...p.imgs] : [];
   window._tNewFiles = []; // fichiers en attente d'upload
   openModal('prod-edit-modal');
@@ -1476,7 +1543,15 @@ function openNotifPanel() {
   const bd = document.getElementById('notif-body');
   const isAdmin = LOCAL.cu && LOCAL.cu.role === 'admin';
   const myEmail = LOCAL.cu ? LOCAL.cu.email : '';
-  const logs = isAdmin ? EMAIL_LOG : EMAIL_LOG.filter(e => e.to === myEmail || e.from === `${LOCAL.cu.prenom} ${LOCAL.cu.nom}`);
+
+  // Admin = voit les notifications des collaborateurs (new_order, order_cancelled)
+  // Collaborateur = voit les notifications de l'admin (order_ready)
+  let logs;
+  if(isAdmin){
+    logs = EMAIL_LOG.filter(e => e.type === 'new_order' || e.type === 'order_cancelled');
+  } else {
+    logs = EMAIL_LOG.filter(e => e.type === 'order_ready' && e.to === myEmail);
+  }
 
   if (!logs.length) {
     bd.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-h">Aucune notification</div><p style="font-size:13px;color:var(--n400)">Les notifications apparaîtront ici à chaque commande.</p></div>';
@@ -1519,7 +1594,15 @@ function clearAllNotifs() {
 
 function updateNotifBadge() {
   const cnt = document.getElementById('notif-count');
-  if (cnt) { cnt.textContent = EMAIL_LOG.length; cnt.style.display = EMAIL_LOG.length > 0 ? 'flex' : 'none'; }
+  if (!cnt) return;
+  let count = 0;
+  if (LOCAL.cu && LOCAL.cu.role === 'admin') {
+    count = EMAIL_LOG.filter(e => e.type === 'new_order' || e.type === 'order_cancelled').length;
+  } else if (LOCAL.cu) {
+    count = EMAIL_LOG.filter(e => e.type === 'order_ready' && e.to === LOCAL.cu.email).length;
+  }
+  cnt.textContent = count;
+  cnt.style.display = count > 0 ? 'flex' : 'none';
 }
 
 // ═══════════════════════════════════════════
