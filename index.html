@@ -768,7 +768,7 @@ function toggleSb(){document.getElementById('sidebar').classList.toggle('open');
 
 function checkBlock(p,u){
   if(!u||u.role==='admin')return null;
-  const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);
+  const tot=Object.values(p.stock).reduce((a,b)=>a+Number(b),0);
   if(tot===0)return'rupture';
   if(p.type==='classique'&&u.droits.cl_rest<=0)return'droit_epuise';
   if(p.type==='classique'&&u.credits.vet<p.credits)return'credits_insuf';
@@ -820,7 +820,7 @@ function rCatalog(){
   const list=LOCAL.products.filter(p=>{if(p.visible!==true&&p.visible!=='true')return false;if(AF.genre!=='Tous'&&p.genre!==AF.genre)return false;if(AF.cat!=='Toutes'&&p.cat!==AF.cat)return false;return true;});
   const u=liveU();
   const cards=list.map(p=>{
-    const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);
+    const tot=Object.values(p.stock).reduce((a,b)=>a+Number(b),0);
     const sb=tot===0?'<span class="badge br">Rupture</span>':tot<=3?'<span class="badge bo">Faible</span>':'<span class="badge bg">Dispo</span>';
     const bl=checkBlock(p,u);
     const imgH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover" alt="${p.nom}">`:`<div class="prod-emoji">${p.emoji}</div>`;
@@ -956,18 +956,24 @@ function rAdminDash(){
   const rupDetails=[], lowDetails=[], artRupDetails=[], artLowDetails=[];
   LOCAL.products.filter(p=>p.visible===true||p.visible==='true').forEach(p=>{
     const entries=Object.entries(p.stock);
-    const totalStock=entries.reduce((a,[,q])=>a+q,0);
-    // Par taille : rupture = 0, faible = ≤ 2
+    const totalStock=entries.reduce((a,[,q])=>a+Number(q),0);
+    // Par taille : forcer Number() pour gérer les strings Firebase
     entries.forEach(([sz,q])=>{
-      if(q===0){taillesRupture++;rupDetails.push({nom:p.nom,taille:sz});}
-      else if(q<=2){taillesFaibles++;lowDetails.push({nom:p.nom,taille:sz,qty:q});}
+      const qty=Number(q);
+      if(qty===0){taillesRupture++;rupDetails.push({nom:p.nom,taille:sz,qty:0});}
+      else if(qty<=2){taillesFaibles++;lowDetails.push({nom:p.nom,taille:sz,qty});}
     });
-    // Par article : rupture = total 0, faible = total ≤ 5
+    // Par article
     if(totalStock===0){articlesRupture++;artRupDetails.push({nom:p.nom,total:0});}
     else if(totalStock<=5){articlesFaibles++;artLowDetails.push({nom:p.nom,total:totalStock});}
   });
 
+  // Stocker globalement pour le modal "Voir tout"
+  window._stockAlerts={rupDetails,lowDetails,artRupDetails,artLowDetails};
+
   const recent=[...O].sort((a,b)=>b.id-a.id).slice(0,6);
+  const alertPreview=5; // Nombre d'alertes affichées dans le dashboard
+  const totalAlerts=rupDetails.length+lowDetails.length+artRupDetails.length+artLowDetails.length;
   return`<div class="stats-grid">
     <div class="stat b"><div class="stat-label">Collaborateurs</div><div class="stat-val">${LOCAL.users.filter(u=>u.actif===true||u.actif==='true').length}</div></div>
     <div class="stat o"><div class="stat-label">En attente</div><div class="stat-val">${att}</div></div>
@@ -984,11 +990,59 @@ function rAdminDash(){
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card"><div class="card-head"><span class="card-title">📋 Dernières commandes</span><button class="btn btn-outline btn-sm" onclick="go('admin-orders')">Voir tout</button></div><div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Statut</th></tr></thead><tbody>${recent.map(o=>{const u=uObj(o.uid);return`<tr><td><strong>#${o.id}</strong></td><td>${u?.prenom} ${u?.nom}</td><td>${fmtDate(o.date)}</td><td>${stBadge(o.statut)}</td></tr>`;}).join('')}</tbody></table></div></div>
-    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock</span></div><div class="card-body" style="padding:9px 15px;max-height:500px;overflow-y:auto">${artRupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:8px 0 4px">🚫 Articles en rupture totale</div>${artRupDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span><strong>${r.nom}</strong></span><span class="badge br">Rupture totale</span></div>`).join('')}`:''}${artLowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:10px 0 4px">⚠️ Articles stock faible (≤ 5)</div>${artLowDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.total} pièce(s)</span></div>`).join('')}`:''}${rupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:10px 0 4px">🚫 Tailles en rupture (stock = 0)</div>${rupDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot out"></span>${r.nom}</span><span class="badge br">${r.taille} — Rupture</span></div>`).join('')}`:''}${lowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:10px 0 4px">⚠️ Tailles stock faible (≤ 2)</div>${lowDetails.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:6px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.taille} — ${r.qty} restant(s)</span></div>`).join('')}`:''}${!rupDetails.length&&!lowDetails.length&&!artRupDetails.length&&!artLowDetails.length?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
+    <div class="card"><div class="card-head"><span class="card-title">⚠️ Alertes stock (${totalAlerts})</span><div style="display:flex;gap:6px"><button class="btn btn-outline btn-xs" onclick="openStockAlerts()">👁️ Voir tout</button><button class="btn btn-ghost btn-xs" onclick="exportStockCSV()">📄 CSV</button></div></div><div class="card-body" style="padding:9px 15px;max-height:350px;overflow-y:auto">${artRupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:6px 0 3px">🚫 Articles en rupture totale (${artRupDetails.length})</div>${artRupDetails.slice(0,alertPreview).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:5px"><span class="stock-dot out"></span><strong>${r.nom}</strong></span><span class="badge br">Rupture</span></div>`).join('')}${artRupDetails.length>alertPreview?`<div style="font-size:11px;color:var(--n400);padding:3px 0">+ ${artRupDetails.length-alertPreview} autres...</div>`:''}`:''}${artLowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:8px 0 3px">⚠️ Articles stock faible (${artLowDetails.length})</div>${artLowDetails.slice(0,alertPreview).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:5px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.total} pcs</span></div>`).join('')}${artLowDetails.length>alertPreview?`<div style="font-size:11px;color:var(--n400);padding:3px 0">+ ${artLowDetails.length-alertPreview} autres...</div>`:''}`:''}${rupDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--r);margin:8px 0 3px">🚫 Tailles en rupture (${rupDetails.length})</div>${rupDetails.slice(0,alertPreview).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:5px"><span class="stock-dot out"></span>${r.nom}</span><span class="badge br">${r.taille}</span></div>`).join('')}${rupDetails.length>alertPreview?`<div style="font-size:11px;color:var(--n400);padding:3px 0">+ ${rupDetails.length-alertPreview} autres...</div>`:''}`:''}${lowDetails.length?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--o);margin:8px 0 3px">⚠️ Tailles stock faible (${lowDetails.length})</div>${lowDetails.slice(0,alertPreview).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--n100)"><span style="font-size:12px;display:flex;align-items:center;gap:5px"><span class="stock-dot low"></span>${r.nom}</span><span class="badge bo">${r.taille}: ${r.qty}</span></div>`).join('')}${lowDetails.length>alertPreview?`<div style="font-size:11px;color:var(--n400);padding:3px 0">+ ${lowDetails.length-alertPreview} autres...</div>`:''}`:''}${totalAlerts===0?'<div style="text-align:center;padding:16px;color:var(--n400);font-size:13px">✅ Tous les stocks OK</div>':''}</div></div>
   </div>`;
 }
 
 // ─── ADMIN ORDERS
+// ── Modal alertes stock complètes
+function openStockAlerts(){
+  const a=window._stockAlerts;if(!a)return;
+  const {rupDetails,lowDetails,artRupDetails,artLowDetails}=a;
+  let html=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary btn-sm" onclick="exportStockCSV()">📄 Télécharger CSV</button></div>`;
+
+  if(artRupDetails.length){
+    html+=`<div style="font-size:12px;font-weight:800;color:var(--r);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">🚫 Articles en rupture totale (${artRupDetails.length})</div>`;
+    html+=`<table style="width:100%;margin-bottom:12px"><thead><tr><th>Article</th><th>Stock total</th><th>Statut</th></tr></thead><tbody>${artRupDetails.map(r=>`<tr><td><strong>${r.nom}</strong></td><td>0</td><td><span class="badge br">Rupture totale</span></td></tr>`).join('')}</tbody></table>`;
+  }
+  if(artLowDetails.length){
+    html+=`<div style="font-size:12px;font-weight:800;color:var(--o);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">⚠️ Articles stock faible — total ≤ 5 (${artLowDetails.length})</div>`;
+    html+=`<table style="width:100%;margin-bottom:12px"><thead><tr><th>Article</th><th>Stock total</th><th>Statut</th></tr></thead><tbody>${artLowDetails.map(r=>`<tr><td>${r.nom}</td><td>${r.total}</td><td><span class="badge bo">Faible</span></td></tr>`).join('')}</tbody></table>`;
+  }
+  if(rupDetails.length){
+    html+=`<div style="font-size:12px;font-weight:800;color:var(--r);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">🚫 Tailles en rupture — stock = 0 (${rupDetails.length})</div>`;
+    html+=`<table style="width:100%;margin-bottom:12px"><thead><tr><th>Article</th><th>Taille</th><th>Stock</th><th>Statut</th></tr></thead><tbody>${rupDetails.map(r=>`<tr><td>${r.nom}</td><td><strong>${r.taille}</strong></td><td>0</td><td><span class="badge br">Rupture</span></td></tr>`).join('')}</tbody></table>`;
+  }
+  if(lowDetails.length){
+    html+=`<div style="font-size:12px;font-weight:800;color:var(--o);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">⚠️ Tailles stock faible — stock ≤ 2 (${lowDetails.length})</div>`;
+    html+=`<table style="width:100%;margin-bottom:12px"><thead><tr><th>Article</th><th>Taille</th><th>Stock</th><th>Statut</th></tr></thead><tbody>${lowDetails.map(r=>`<tr><td>${r.nom}</td><td><strong>${r.taille}</strong></td><td>${r.qty}</td><td><span class="badge bo">Faible</span></td></tr>`).join('')}</tbody></table>`;
+  }
+  if(!rupDetails.length&&!lowDetails.length&&!artRupDetails.length&&!artLowDetails.length){
+    html='<div style="text-align:center;padding:40px;color:var(--n400)"><div style="font-size:42px;margin-bottom:10px">✅</div><div style="font-size:15px;font-weight:700">Tous les stocks sont OK</div></div>';
+  }
+
+  document.getElementById('cdm-title').textContent=`⚠️ Alertes stock complètes`;
+  document.getElementById('cdm-body').innerHTML=html;
+  openModal('collab-detail-modal');
+}
+
+function exportStockCSV(){
+  const a=window._stockAlerts;if(!a)return;
+  const {rupDetails,lowDetails,artRupDetails,artLowDetails}=a;
+  const rows=[['Type','Article','Taille','Stock','Statut']];
+  artRupDetails.forEach(r=>rows.push(['Article','\"'+r.nom+'\"','Toutes','0','Rupture totale']));
+  artLowDetails.forEach(r=>rows.push(['Article','\"'+r.nom+'\"','Toutes',r.total,'Stock faible']));
+  rupDetails.forEach(r=>rows.push(['Taille','\"'+r.nom+'\"',r.taille,'0','Rupture']));
+  lowDetails.forEach(r=>rows.push(['Taille','\"'+r.nom+'\"',r.taille,r.qty,'Stock faible']));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;link.download=`Alertes_Stock_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();URL.revokeObjectURL(url);
+  toast('📄 CSV téléchargé !');
+}
+
 function rAdminOrders(){
   return`<div class="sh"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" class="search-input" placeholder="Rechercher..." id="ord-s" oninput="filterOrders()"><select class="sel-input" id="ord-st" onchange="filterOrders()"><option value="">Tous les statuts</option><option value="attente">En attente</option><option value="preparation">En préparation</option><option value="prete">Prête</option><option value="remise">Remise</option><option value="annulee">Annulée</option></select></div></div>
   <div class="card"><div class="tbl-wrap"><table><thead><tr><th>N°</th><th>Collaborateur</th><th>Date</th><th>Articles</th><th>Crédits</th><th>Coût</th><th>Statut</th><th></th></tr></thead><tbody id="ord-tbody">${ordRows(LOCAL.orders)}</tbody></table></div></div>`;
@@ -1154,7 +1208,7 @@ function rAdminProducts(){
   return`<div class="sh"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" class="search-input" placeholder="Rechercher..." id="prod-s" oninput="filterProds()"><select class="sel-input" id="prod-cat-f" onchange="filterProds()"><option value="">Toutes catégories</option>${[...new Set(LOCAL.products.map(p=>p.cat))].map(c=>`<option>${c}</option>`).join('')}</select></div><button class="btn btn-primary btn-sm" onclick="openProdEdit()">+ Nouveau produit</button></div>
   <div class="card"><div class="tbl-wrap"><table><thead><tr><th>Article</th><th>Genre</th><th>Catégorie</th><th>Dotation</th><th>Crédits</th><th>Prix réel</th><th>Stock</th><th>Visible</th><th></th></tr></thead><tbody id="prod-tbody">${prodRows(LOCAL.products)}</tbody></table></div></div>`;
 }
-function prodRows(list){return list.map(p=>{const isVis=p.visible===true||p.visible==='true';const tot=Object.values(p.stock).reduce((a,b)=>a+b,0);const sc=tot===0?'out':tot<=5?'low':'ok';const szH=Object.entries(p.stock).map(([s,q])=>`<span style="display:inline-block;margin:1px;padding:1px 5px;border-radius:3px;font-size:10px;background:${q===0?'var(--rl)':q<=2?'var(--yl)':'var(--gl)'};color:${q===0?'var(--r)':q<=2?'#92400e':'var(--gd)'}">${s}:${q}</span>`).join('');const thH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:15px">${p.emoji}</span>`;return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="prod-thumb-sm">${thH}</div><strong>${p.nom}</strong></div></td><td>${p.genre}</td><td>${p.cat}</td><td>${dtag(p.type)}</td><td>${p.credits}</td><td>${p.prix.toFixed(2)}€</td><td><div style="display:flex;align-items:center;gap:5px"><span class="stock-dot ${sc}"></span><strong>${tot}</strong></div><div style="margin-top:2px">${szH}</div></td><td>${isVis?'<span class="badge bg">Oui</span>':'<span class="badge bn">Non</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openProdEdit(${p.id})">Modifier</button><button class="btn btn-xs btn-ghost" onclick="toggleVis(${p.id})">${isVis?'Masquer':'Afficher'}</button></td></tr>`;}).join('');}
+function prodRows(list){return list.map(p=>{const isVis=p.visible===true||p.visible==='true';const tot=Object.values(p.stock).reduce((a,b)=>a+Number(b),0);const sc=tot===0?'out':tot<=5?'low':'ok';const szH=Object.entries(p.stock).map(([s,q])=>{const nq=Number(q);return`<span style="display:inline-block;margin:1px;padding:1px 5px;border-radius:3px;font-size:10px;background:${nq===0?'var(--rl)':nq<=2?'var(--yl)':'var(--gl)'};color:${nq===0?'var(--r)':nq<=2?'#92400e':'var(--gd)'}">${s}:${nq}</span>`;}).join('');const thH=p.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:15px">${p.emoji}</span>`;return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="prod-thumb-sm">${thH}</div><strong>${p.nom}</strong></div></td><td>${p.genre}</td><td>${p.cat}</td><td>${dtag(p.type)}</td><td>${p.credits}</td><td>${p.prix.toFixed(2)}€</td><td><div style="display:flex;align-items:center;gap:5px"><span class="stock-dot ${sc}"></span><strong>${tot}</strong></div><div style="margin-top:2px">${szH}</div></td><td>${isVis?'<span class="badge bg">Oui</span>':'<span class="badge bn">Non</span>'}</td><td style="display:flex;gap:5px"><button class="btn btn-xs btn-outline" onclick="openProdEdit(${p.id})">Modifier</button><button class="btn btn-xs btn-ghost" onclick="toggleVis(${p.id})">${isVis?'Masquer':'Afficher'}</button></td></tr>`;}).join('');}
 function filterProds(){const s=document.getElementById('prod-s')?.value.toLowerCase()||'';const cat=document.getElementById('prod-cat-f')?.value||'';const list=LOCAL.products.filter(p=>(!s||p.nom.toLowerCase().includes(s))&&(!cat||p.cat===cat));const tb=document.getElementById('prod-tbody');if(tb)tb.innerHTML=prodRows(list);}
 function toggleVis(id){const p=pObj(id);if(p){p.visible=!(p.visible===true||p.visible==='true');saveProdToFirebase(p);toast(`✅ ${p.nom} ${p.visible?'affiché':'masqué'}.`);go('admin-products');}}
 
