@@ -890,7 +890,38 @@ function rMyOrders(){
   const u=liveU();
   const ords=[...LOCAL.orders].filter(o=>o.uid===u.id).sort((a,b)=>b.id-a.id);
   if(!ords.length)return`<div class="empty"><div class="empty-icon">📦</div><div class="empty-h">Aucune commande</div></div>`;
-  return`<div style="display:flex;flex-direction:column;gap:12px">${ords.map(o=>{const si=['attente','preparation','prete','remise'].indexOf(o.statut);const steps=['En attente','Préparation','Prête','Remise'];return`<div class="card"><div class="card-head"><div><span style="font-size:14px;font-weight:800">Commande #${o.id}</span><span style="font-size:12px;color:var(--n400);margin-left:9px">${fmtDate(o.date)}</span></div>${stBadge(o.statut)}</div><div class="card-body">${o.statut!=='annulee'?`<div class="order-steps">${steps.map((s,i)=>`<div class="step ${i<si?'done':i===si?'cur':''}">${s}</div>`).join('')}</div>`:''}<div style="margin:10px 0">${o.articles.map(a=>{const p=pObj(a.pid);const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--n100)"><div style="width:30px;height:30px;border-radius:5px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${th}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${p?.nom||'?'}</div><div style="font-size:11px;color:var(--n400)">Taille ${a.taille} · ${a.credits>0?a.credits+' crédits':'Gratuit'}</div></div></div>`;}).join('')}</div>${o.comment?`<div class="alert alert-i" style="margin-bottom:0">💬 <div><strong>Message RH :</strong> ${o.comment}</div></div>`:''}<div style="font-size:12px;color:var(--n400);margin-top:7px">Total : ${o.total} crédits</div></div></div>`;}).join('')}</div>`;
+  return`<div style="display:flex;flex-direction:column;gap:12px">${ords.map(o=>{const si=['attente','preparation','prete','remise'].indexOf(o.statut);const steps=['En attente','Préparation','Prête','Remise'];const canCancel=o.statut==='attente'||o.statut==='preparation';return`<div class="card"><div class="card-head"><div><span style="font-size:14px;font-weight:800">Commande #${o.id}</span><span style="font-size:12px;color:var(--n400);margin-left:9px">${fmtDate(o.date)}</span></div><div style="display:flex;align-items:center;gap:8px">${stBadge(o.statut)}${canCancel?`<button class="btn btn-xs btn-danger" onclick="cancelMyOrder(${o.id})">Annuler</button>`:''}</div></div><div class="card-body">${o.statut!=='annulee'?`<div class="order-steps">${steps.map((s,i)=>`<div class="step ${i<si?'done':i===si?'cur':''}">${s}</div>`).join('')}</div>`:''}<div style="margin:10px 0">${o.articles.map(a=>{const p=pObj(a.pid);const th=p?.imgs?.length?`<img src="${p.imgs[0]}" style="width:100%;height:100%;object-fit:cover">`:(p?.emoji||'📦');return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--n100)"><div style="width:30px;height:30px;border-radius:5px;overflow:hidden;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${th}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">${p?.nom||'?'}</div><div style="font-size:11px;color:var(--n400)">Taille ${a.taille} · ${a.credits>0?a.credits+' crédits':'Gratuit'}</div></div></div>`;}).join('')}</div>${o.comment?`<div class="alert alert-i" style="margin-bottom:0">💬 <div><strong>Message RH :</strong> ${o.comment}</div></div>`:''}<div style="font-size:12px;color:var(--n400);margin-top:7px">Total : ${o.total} crédits</div></div></div>`;}).join('')}</div>`;
+}
+
+// ── Fonction réutilisable : restaurer crédits + stock pour une commande
+function restoreOrderCredits(o){
+  const u=LOCAL.users.find(x=>x.id===o.uid);
+  if(!u)return;
+  o.articles.forEach(a=>{
+    // Restaurer le stock
+    const p=pObj(a.pid);
+    if(p&&a.taille){p.stock[a.taille]=(p.stock[a.taille]||0)+1;saveProdToFirebase(p);}
+    // Restaurer les crédits
+    if(a.type==='classique'){u.credits.vet+=a.credits;u.droits.cl_rest++;}
+    if(a.type==='chaussures'){u.credits.chu+=a.credits;u.droits.chu_used=false;}
+    if(a.type==='option_annuelle'&&a.opt_key){u.opts[a.opt_key]=false;}
+  });
+  saveUserToFirebase(u);
+}
+
+// ── Collaborateur annule sa propre commande
+function cancelMyOrder(id){
+  if(!confirm('Annuler cette commande ? Vos crédits seront restaurés.'))return;
+  const o=LOCAL.orders.find(x=>x.id===id);if(!o)return;
+  o.statut='annulee';
+  restoreOrderCredits(o);
+  saveOrderToFirebase(o);
+  updateCred();
+  // Notification aux admins
+  const u=liveU();
+  if(u)sendEmailNotif('order_cancelled', o, u);
+  toast('✅ Commande annulée. Crédits restaurés.');
+  go('my-orders');
 }
 
 // ─── MY RIGHTS
@@ -951,25 +982,11 @@ function saveOrder(){
   o.comment=document.getElementById('oe-cm').value;
   o.cout=parseFloat(document.getElementById('oe-cost').value)||o.cout;
 
-  // ── Restaurer le stock si la commande passe en "annulée"
+  // ── Restaurer crédits + stock si annulation
   if(oldStatut!=='annulee'&&o.statut==='annulee'){
-    const u=uObj(o.uid);
-    o.articles.forEach(a=>{
-      const p=pObj(a.pid);
-      if(p&&a.taille){
-        p.stock[a.taille]=(p.stock[a.taille]||0)+1;
-        saveProdToFirebase(p);
-      }
-      // Restaurer les crédits et droits du collaborateur
-      if(u){
-        if(a.type==='classique'){u.credits.vet+=a.credits;u.droits.cl_rest++;}
-        if(a.type==='chaussures'){u.credits.chu+=a.credits;u.droits.chu_used=false;}
-        if(a.type==='option_annuelle'&&a.opt_key){u.opts[a.opt_key]=false;}
-      }
-    });
-    if(u)saveUserToFirebase(u);
+    restoreOrderCredits(o);
     toast('🔄 Stocks et crédits restaurés.');
-    // Notification annulation aux admins
+    const u=uObj(o.uid);
     sendEmailNotif('order_cancelled', o, u || {prenom:'Inconnu',nom:'',email:''});
   }
 
@@ -985,12 +1002,19 @@ function saveOrder(){
 // ─── ADMIN COLLABS
 // ── Supprimer une commande
 function deleteOrder(id){
-  if(!confirm(`Supprimer définitivement la commande #${id} ?`))return;
-  const idx=LOCAL.orders.findIndex(o=>o.id===id);
+  if(!confirm(`Supprimer définitivement la commande #${id} ?\n\nLes crédits et stocks seront restaurés au collaborateur.`))return;
+  const o=LOCAL.orders.find(x=>x.id===id);
+  // Restaurer crédits + stock si la commande n'était pas déjà annulée
+  if(o && o.statut!=='annulee'){
+    restoreOrderCredits(o);
+    const u=uObj(o.uid);
+    if(u)sendEmailNotif('order_cancelled', o, u);
+  }
+  const idx=LOCAL.orders.findIndex(x=>x.id===id);
   if(idx>=0)LOCAL.orders.splice(idx,1);
   if(FB_READY){
     DB_LIVE.ref('orders/'+id).remove()
-      .then(()=>{console.log('✅ Commande '+id+' supprimée de Firebase');toast(`🗑️ Commande #${id} supprimée.`);})
+      .then(()=>{console.log('✅ Commande '+id+' supprimée de Firebase');toast(`🗑️ Commande #${id} supprimée. Crédits restaurés.`);})
       .catch(e=>{console.error('❌ Erreur suppression commande:',e);toast('❌ Erreur suppression: '+e.message,'e');});
   }
   go('admin-orders');
